@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "build": "npm --prefix client install && npm --prefix client run build",
+    "build": "npm --prefix client install && npm --prefix client run build && node -e \"const fs=require('fs'); if(fs.existsSync('dist') && !fs.existsSync('client/dist')) { fs.cpSync('dist', 'client/dist', {recursive:true}); }\"",
     "dev": "node server.js"
   },
   "keywords": [

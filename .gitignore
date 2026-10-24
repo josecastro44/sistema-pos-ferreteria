@@ -3,6 +3,7 @@ node_modules/
 client/node_modules/
 
 # Production build (built automatically by Vercel on deploy and by iniciar_sistema.bat)
+dist/
 client/dist/
 
 # SQLite temp files

@@ -721,13 +721,18 @@ app.get('/api/finances', (req, res) => {
   }
 });
 
-// Serve frontend build if exists
-app.use(express.static(path.join(__dirname, 'client', 'dist')));
+// Serve frontend build if exists (support both root dist and client/dist)
+const fs = require('fs');
+const distPath = fs.existsSync(path.join(__dirname, 'dist', 'index.html'))
+  ? path.join(__dirname, 'dist')
+  : path.join(__dirname, 'client', 'dist');
+
+app.use(express.static(distPath));
 
 // Serve frontend fallback for SPA
 app.use((req, res) => {
-  const indexPath = path.join(__dirname, 'client', 'dist', 'index.html');
-  if (require('fs').existsSync(indexPath)) {
+  const indexPath = path.join(distPath, 'index.html');
+  if (fs.existsSync(indexPath)) {
     res.sendFile(indexPath);
   } else {
     res.json({ message: 'API Ferretería Hebert activa. Cliente Web en desarrollo.' });
