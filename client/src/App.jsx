@@ -1593,10 +1593,28 @@ export default function App() {
                     </p>
                   </div>
 
+                  <div>
+                    <label className="text-xs font-bold text-gray-700 block mb-1">
+                      Nombre del Cliente del Crédito *
+                    </label>
+                    <input
+                      type="text"
+                      value={customerName === 'Cliente Mostrador' ? '' : customerName}
+                      onChange={(e) => setCustomerName(e.target.value)}
+                      placeholder="Ej: José Martínez / Taller El Éxito"
+                      className="w-full p-2.5 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
+                    />
+                    {(!customerName || customerName.trim() === 'Cliente Mostrador') && (
+                      <p className="text-[11px] text-rose-500 font-medium mt-1">
+                        * Ingresa el nombre de la persona o taller responsable de la deuda.
+                      </p>
+                    )}
+                  </div>
+
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="text-xs font-bold text-gray-700 block mb-1">
-                        Fecha Límite de Pago (Vencimiento):
+                        Fecha Límite de Pago:
                       </label>
                       <input
                         type="date"
@@ -1618,6 +1636,33 @@ export default function App() {
                         placeholder="0.00"
                         className="w-full p-2.5 bg-white border border-gray-200 rounded-xl font-mono font-bold text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
                       />
+                      <div className="flex gap-1.5 mt-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setCreditInitialAbono('0')}
+                          className={`px-2 py-0.5 rounded-lg text-[10px] font-bold cursor-pointer transition-colors ${
+                            parseFloat(creditInitialAbono || 0) === 0
+                              ? 'bg-indigo-600 text-white'
+                              : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                          }`}
+                        >
+                          $0 (Sin Inicial)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setCreditInitialAbono((cartTotals.total_usd_tienda * 0.2).toFixed(2))}
+                          className="px-2 py-0.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[10px] font-bold cursor-pointer"
+                        >
+                          20%
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setCreditInitialAbono((cartTotals.total_usd_tienda * 0.5).toFixed(2))}
+                          className="px-2 py-0.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[10px] font-bold cursor-pointer"
+                        >
+                          50%
+                        </button>
+                      </div>
                     </div>
                   </div>
 
