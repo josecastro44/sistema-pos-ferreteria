@@ -1,10 +1,27 @@
 const path = require('path');
+const { createClient } = require('@libsql/client');
+
+const TURSO_URL = process.env.TURSO_DATABASE_URL || 'libsql://ferreteria-pos-josecastro44.aws-us-west-2.turso.io';
+const TURSO_AUTH_TOKEN = process.env.TURSO_AUTH_TOKEN || 'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJleHAiOjE4MjU4MDA5MzMsImlhdCI6MTc5NDI2NDkzMywiaWQiOiIwMWExYzI4NS0yNjAxLTdmNWUtODUyMC00OTQ2ZjEyMGQzYzYiLCJraWQiOiJIbWpnbnZPOC1fRlpYY3dZTzZjREg2TWZlMEhiMng1VnN2b0N6SDYxT2tnIiwicmlkIjoiYmY3MjZhNmItOGMzYy00ZTI3LWE2MjUtODQ0NDQ0ZmQ3Y2RlIn0.sCSMS43ImgRf7wzh0QEfr7FoMiMwzobDD4SOXDa-RRv0bRzzeXwzOIlCDjcrbZA43c26H9UvMVH_hTlzXa2VDQ';
+
+let tursoClient = null;
+if (TURSO_URL && TURSO_AUTH_TOKEN) {
+  try {
+    tursoClient = createClient({
+      url: TURSO_URL,
+      authToken: TURSO_AUTH_TOKEN
+    });
+    console.log('📡 Cliente Turso Cloud inicializado correctamente.');
+  } catch (err) {
+    console.warn('Turso client init warning:', err.message);
+  }
+}
 
 let db;
 let isNativeSQLite = false;
 
 // If NOT running in Vercel serverless environment, attempt to use native better-sqlite3
-if (!process.env.VERCEL) {
+if (!process.env.VERCEL && !process.env.FORCE_TURSO) {
   try {
     const Database = require('better-sqlite3');
     const dbPath = path.join(__dirname, 'ferreteria.db');
@@ -13,11 +30,11 @@ if (!process.env.VERCEL) {
     db.pragma('foreign_keys = ON');
     isNativeSQLite = true;
   } catch (err) {
-    console.warn('better-sqlite3 no disponible o no compilable, usando adaptador universal en memoria para Vercel/Cloud.');
+    console.warn('better-sqlite3 no disponible o no compilable, usando adaptador universal conectado a Turso Cloud.');
   }
 }
 
-// Universal In-Memory Database Fallback for Vercel Serverless
+// Universal In-Memory Database Fallback for Vercel Serverless (with Turso Cloud persistence)
 if (!isNativeSQLite) {
   let settingsState = {
     id: 1,
@@ -69,10 +86,55 @@ if (!isNativeSQLite) {
   let nextQuoteId = 1;
   let nextClosingId = 1;
 
+  let isTursoSynced = false;
+  const pendingWrites = [];
+
+  async function syncWithTurso() {
+    if (!tursoClient || isTursoSynced) return;
+    try {
+      const [settingsRes, prodsRes, custsRes, usersRes, salesRes, itemsRes, abonosRes, quotesRes, closingsRes] = await Promise.all([
+        tursoClient.execute('SELECT * FROM settings WHERE id = 1'),
+        tursoClient.execute('SELECT * FROM products ORDER BY name ASC'),
+        tursoClient.execute('SELECT * FROM customers ORDER BY name ASC'),
+        tursoClient.execute('SELECT * FROM users'),
+        tursoClient.execute('SELECT * FROM sales ORDER BY id DESC'),
+        tursoClient.execute('SELECT * FROM sale_items'),
+        tursoClient.execute('SELECT * FROM credit_abonos ORDER BY id DESC'),
+        tursoClient.execute('SELECT * FROM quotes ORDER BY id DESC'),
+        tursoClient.execute('SELECT * FROM cash_closings ORDER BY id DESC')
+      ]);
+
+      if (settingsRes.rows.length) settingsState = { ...settingsState, ...settingsRes.rows[0] };
+      if (prodsRes.rows.length) productsState = prodsRes.rows.map(r => ({ ...r }));
+      if (custsRes.rows.length) customersState = custsRes.rows.map(r => ({ ...r }));
+      if (usersRes.rows.length) usersState = usersRes.rows.map(r => ({ ...r }));
+      if (salesRes.rows.length) salesState = salesRes.rows.map(r => ({ ...r }));
+      if (itemsRes.rows.length) saleItemsState = itemsRes.rows.map(r => ({ ...r }));
+      if (abonosRes.rows.length) creditAbonosState = abonosRes.rows.map(r => ({ ...r }));
+      if (quotesRes.rows.length) quotesState = quotesRes.rows.map(r => ({ ...r }));
+      if (closingsRes.rows.length) cashClosingsState = closingsRes.rows.map(r => ({ ...r }));
+
+      if (productsState.length) nextProductId = Math.max(...productsState.map(p => p.id)) + 1;
+      if (salesState.length) nextSaleId = Math.max(...salesState.map(s => s.id)) + 1;
+      if (customersState.length) nextCustomerId = Math.max(...customersState.map(c => c.id)) + 1;
+      if (creditAbonosState.length) nextAbonoId = Math.max(...creditAbonosState.map(a => a.id)) + 1;
+      if (quotesState.length) nextQuoteId = Math.max(...quotesState.map(q => q.id)) + 1;
+      if (cashClosingsState.length) nextClosingId = Math.max(...cashClosingsState.map(c => c.id)) + 1;
+
+      isTursoSynced = true;
+      console.log('✅ Base de datos sincronizada con Turso Cloud! Total productos:', productsState.length);
+    } catch (err) {
+      console.error('Error sincronizando con Turso Cloud:', err.message);
+    }
+  }
+
   db = {
     pragma: () => {},
     exec: () => {},
     transaction: (fn) => (...args) => fn(...args),
+    isTursoSynced: () => isTursoSynced,
+    pendingWrites,
+    syncWithTurso,
     prepare: (sql) => {
       const cleanSql = sql.trim().replace(/\s+/g, ' ');
 
@@ -235,6 +297,14 @@ if (!isNativeSQLite) {
         },
 
         run: (...params) => {
+          if (tursoClient) {
+            pendingWrites.push(
+              tursoClient.execute({ sql, args: params }).catch(err => {
+                console.warn('Turso write async notice:', err.message);
+              })
+            );
+          }
+
           if (cleanSql.includes('UPDATE settings')) {
             const [store_name, rif, phone, address, tasa_interna, tasa_bcv, cashea_percent, receipt_footer] = params;
             if (store_name) settingsState.store_name = store_name;

@@ -9,6 +9,29 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
+// Middleware to ensure Turso Cloud sync & await cloud writes before response
+app.use(async (req, res, next) => {
+  try {
+    if (db.syncWithTurso && (!db.isTursoSynced || !db.isTursoSynced())) {
+      await db.syncWithTurso();
+    }
+  } catch (e) {
+    console.warn('Sync middleware notice:', e.message);
+  }
+
+  const originalJson = res.json.bind(res);
+  res.json = async function(data) {
+    if (db.pendingWrites && db.pendingWrites.length > 0) {
+      const writesToWait = [...db.pendingWrites];
+      db.pendingWrites.length = 0;
+      await Promise.allSettled(writesToWait);
+    }
+    return originalJson(data);
+  };
+
+  next();
+});
+
 // Helper to get active rates
 function getRates() {
   const settings = db.prepare('SELECT tasa_interna, tasa_bcv, cashea_percent FROM settings WHERE id = 1').get();
