@@ -254,6 +254,8 @@ app.post('/api/sales', (req, res) => {
     const {
       customer_name,
       customer_id,
+      customer_id_card,
+      customer_phone,
       cashier_name,
       payment_method, // 'bolivares', 'dolares_efectivo', 'zelle', 'binance', 'cashea', 'credito', 'mixto'
       amount_paid_bs,
@@ -281,6 +283,44 @@ app.post('/api/sales', (req, res) => {
     }
 
     const rates = getRates();
+
+    // Auto-create or link customer with CI and phone
+    let finalCustomerId = customer_id ? parseInt(customer_id) : null;
+    let customerObj = null;
+
+    if (customer_name && customer_name.trim() !== 'Cliente Mostrador') {
+      const cleanName = customer_name.trim();
+      const cleanCi = (customer_id_card || '').trim();
+      const cleanPhone = (customer_phone || '').trim();
+
+      let existing = null;
+      if (cleanCi) {
+        existing = db.prepare('SELECT * FROM customers WHERE id_card = ?').get(cleanCi);
+      }
+      if (!existing && cleanName) {
+        existing = db.prepare('SELECT * FROM customers WHERE LOWER(name) = ?').get(cleanName.toLowerCase());
+      }
+
+      if (existing) {
+        finalCustomerId = existing.id;
+        customerObj = { ...existing };
+        if (cleanPhone || cleanCi) {
+          db.prepare('UPDATE customers SET phone = COALESCE(NULLIF(?, ""), phone), id_card = COALESCE(NULLIF(?, ""), id_card) WHERE id = ?').run(cleanPhone, cleanCi, existing.id);
+          if (cleanPhone) customerObj.phone = cleanPhone;
+          if (cleanCi) customerObj.id_card = cleanCi;
+        }
+      } else {
+        const insertCust = db.prepare('INSERT INTO customers (name, id_card, phone, address, email) VALUES (?, ?, ?, ?, ?)').run(
+          cleanName,
+          cleanCi || `V-${Math.floor(Math.random() * 89999999 + 10000000)}`,
+          cleanPhone || '',
+          'Registrado en Venta',
+          ''
+        );
+        finalCustomerId = insertCust.lastInsertRowid;
+        customerObj = { id: finalCustomerId, name: cleanName, id_card: cleanCi, phone: cleanPhone };
+      }
+    }
 
     // Calculate totals from items
     let total_usd_tienda = 0;
@@ -366,7 +406,7 @@ app.post('/api/sales', (req, res) => {
       `).run(
         sale_number,
         customer_name || 'Cliente Mostrador',
-        customer_id ? parseInt(customer_id) : null,
+        finalCustomerId,
         cashier_name || 'Admin Hebert',
         rates.tasa_interna,
         rates.tasa_bcv,
@@ -439,6 +479,7 @@ app.post('/api/sales', (req, res) => {
     res.status(201).json({
       sale: fullSale,
       items: saleItems,
+      customer: customerObj,
       settings
     });
   } catch (err) {

@@ -76,6 +76,8 @@ export default function App() {
   const [selectedCategory, setSelectedCategory] = useState('Todos');
   const [cart, setCart] = useState([]);
   const [customerName, setCustomerName] = useState('Cliente Mostrador');
+  const [customerCi, setCustomerCi] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
   const searchInputRef = useRef(null);
 
   // Quote (Presupuesto) Modal State
@@ -363,6 +365,17 @@ export default function App() {
     setCasheaInitialPaid((cartTotals.total_usd_tienda * 0.4).toFixed(2));
     setCreditInitialAbono('0');
     setMixtoUsdPaid('');
+
+    // Pre-fill customer details if matching an existing customer
+    if (customerName && customerName !== 'Cliente Mostrador') {
+      const match = customers.find(c => c.name.toLowerCase() === customerName.toLowerCase());
+      if (match) {
+        setSelectedCustomerId(match.id);
+        if (match.id_card) setCustomerCi(match.id_card);
+        if (match.phone) setCustomerPhone(match.phone);
+      }
+    }
+
     setIsCheckoutOpen(true);
   };
 
@@ -387,8 +400,16 @@ export default function App() {
       const isCasheaSale = isCasheaActive || checkoutMethod === 'cashea';
       const isCreditSale = checkoutMethod === 'credito';
 
-      if (isCreditSale && (!customerName || customerName.trim() === 'Cliente Mostrador')) {
-        throw new Error('Para ventas a crédito o facturas abiertas debe seleccionar o ingresar el nombre del cliente');
+      if (isCreditSale) {
+        if (!customerName || customerName.trim() === 'Cliente Mostrador') {
+          throw new Error('Debe ingresar el nombre del cliente para el crédito');
+        }
+        if (!customerCi || !customerCi.trim()) {
+          throw new Error('Debe ingresar la Cédula o RIF del cliente');
+        }
+        if (!customerPhone || !customerPhone.trim()) {
+          throw new Error('Debe ingresar el número de teléfono o WhatsApp del cliente');
+        }
       }
 
       if (checkoutMethod === 'bolivares') {
@@ -438,6 +459,8 @@ export default function App() {
       const payload = {
         customer_name: customerName || 'Cliente Mostrador',
         customer_id: selectedCustomerId,
+        customer_id_card: customerCi || '',
+        customer_phone: customerPhone || '',
         cashier_name: currentUser?.name || 'Admin Hebert',
         payment_method: checkoutMethod,
         amount_paid_bs: paidBs,
@@ -1595,7 +1618,7 @@ export default function App() {
 
                   <div>
                     <label className="text-xs font-bold text-gray-700 block mb-1">
-                      Nombre del Cliente del Crédito *
+                      Nombre Completo del Cliente *
                     </label>
                     <input
                       type="text"
@@ -1609,6 +1632,35 @@ export default function App() {
                         * Ingresa el nombre de la persona o taller responsable de la deuda.
                       </p>
                     )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-bold text-gray-700 block mb-1">
+                        Cédula de Identidad / RIF *
+                      </label>
+                      <input
+                        type="text"
+                        value={customerCi}
+                        onChange={(e) => setCustomerCi(e.target.value)}
+                        placeholder="Ej: V-18.456.789 / J-12345678"
+                        required
+                        className="w-full p-2.5 bg-white border border-gray-200 rounded-xl font-mono text-xs font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-gray-700 block mb-1">
+                        Teléfono / WhatsApp *
+                      </label>
+                      <input
+                        type="tel"
+                        value={customerPhone}
+                        onChange={(e) => setCustomerPhone(e.target.value)}
+                        placeholder="Ej: 0414-1234567"
+                        required
+                        className="w-full p-2.5 bg-white border border-gray-200 rounded-xl font-mono text-xs font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
+                      />
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
@@ -1866,9 +1918,21 @@ export default function App() {
                 <div className="my-1 text-[10px] space-y-0.5">
                   <div>Ticket: <strong>{printedSale.sale.sale_number}</strong></div>
                   <div>Fecha: {new Date(printedSale.sale.created_at).toLocaleString('es-VE')}</div>
-                  <div>Cliente: {printedSale.sale.customer_name}</div>
+                  <div>Cliente: <strong>{printedSale.sale.customer_name}</strong></div>
+                  {printedSale.customer && printedSale.customer.id_card && (
+                    <div>C.I. / RIF: {printedSale.customer.id_card}</div>
+                  )}
+                  {printedSale.customer && printedSale.customer.phone && (
+                    <div>Teléfono: {printedSale.customer.phone}</div>
+                  )}
                   <div>Tasa Tienda: Bs. {Number(printedSale.sale.tasa_interna).toLocaleString('es-VE', { minimumFractionDigits: 2 })}</div>
-                  <div>Tasa BCV:    Bs. {Number(printedSale.sale.tasa_bcv).toLocaleString('es-VE', { minimumFractionDigits: 2 })}</div>
+                  {printedSale.sale.is_credit ? (
+                    <div className="my-1.5 p-1 bg-amber-50 border border-amber-300 text-amber-950 text-center font-bold text-[10px]">
+                      <div>*** FACTURA A CRÉDITO ***</div>
+                      <div>Vencimiento: {printedSale.sale.credit_due_date ? new Date(printedSale.sale.credit_due_date).toLocaleDateString('es-VE') : 'Por definir'}</div>
+                      <div>Saldo Pendiente: ${Number(printedSale.sale.credit_balance_usd).toFixed(2)}</div>
+                    </div>
+                  ) : null}
                   <div>--------------------------------</div>
                 </div>
 
