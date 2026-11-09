@@ -7,7 +7,9 @@ import {
   Trash2,
   DollarSign,
   ShoppingCart,
-  Box
+  Box,
+  FileText,
+  Sparkles
 } from 'lucide-react';
 
 export default function PosView({
@@ -17,6 +19,9 @@ export default function PosView({
   setSelectedCategory,
   posViewMode,
   setPosViewMode,
+  isCasheaActive,
+  setIsCasheaActive,
+  settings,
   cart,
   customerName,
   setCustomerName,
@@ -26,12 +31,15 @@ export default function PosView({
   updateCartQuantity,
   removeFromCart,
   clearCart,
-  onOpenCheckout
+  onOpenCheckout,
+  onGenerateQuote
 }) {
   const getProductImage = (prod) => {
     if (prod.image_url && prod.image_url.trim()) return prod.image_url;
     return 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=300&auto=format&fit=crop&q=80';
   };
+
+  const casheaPercent = settings?.cashea_percent || 15;
 
   return (
     <div className="space-y-3.5 w-full max-w-[1720px] mx-auto">
@@ -40,17 +48,51 @@ export default function PosView({
       {/* ========================================================= */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold text-gray-900 tracking-tight">Punto de Venta</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl font-bold text-gray-900 tracking-tight">Punto de Venta</h2>
+            {isCasheaActive && (
+              <span className="px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800 text-[11px] font-black tracking-wide border border-purple-200 animate-pulse">
+                🟣 Modo Cashea Activo (+{casheaPercent}%)
+              </span>
+            )}
+          </div>
           <div className="flex items-center gap-2 text-xs text-gray-400 font-medium">
             <Box className="w-3.5 h-3.5" />
             <span>{products.length} productos</span>
             <span>•</span>
-            <span className="text-[#4f46e5] font-semibold">[F2] para buscar</span>
+            <span className="text-[#00a884] font-semibold">[F2] para buscar</span>
           </div>
         </div>
 
         {/* Action Controls & View Switcher */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Modalidad Cashea Toggle (Precio 1 vs Precio 2) */}
+          <div className="flex items-center bg-gray-100/90 p-0.5 rounded-xl border border-gray-200/60 text-xs">
+            <button
+              type="button"
+              onClick={() => setIsCasheaActive(false)}
+              className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer ${
+                !isCasheaActive
+                  ? 'bg-white text-gray-900 shadow-xs'
+                  : 'text-gray-500 hover:text-gray-900'
+              }`}
+            >
+              Precio Estándar
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsCasheaActive(true)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+                isCasheaActive
+                  ? 'bg-purple-600 text-white shadow-xs'
+                  : 'text-purple-700 hover:bg-purple-50'
+              }`}
+            >
+              <span>🟣 Cashea</span>
+              <span className="text-[10px] opacity-80">(+{casheaPercent}%)</span>
+            </button>
+          </div>
+
           {/* Segmented Switcher (Cuadrícula / Lista) */}
           <div className="flex items-center bg-gray-100/90 p-0.5 rounded-xl border border-gray-200/60">
             <button
@@ -126,59 +168,75 @@ export default function PosView({
             /* VISTA CUADRÍCULA COMPACTA Y EFICIENTE (4-5 COLS)    */
             /* =================================================== */
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2.5 sm:gap-3">
-              {products.map(prod => (
-                <div
-                  key={prod.id}
-                  onClick={() => onProductClick(prod)}
-                  className="bg-white rounded-xl border border-gray-100 hover:border-[#4f46e5]/40 hover:shadow-sm transition-all cursor-pointer flex flex-col justify-between p-2.5 sm:p-3 group relative"
-                >
-                  <div>
-                    {/* Thumbnail Image Box */}
-                    <div className="w-full h-24 sm:h-28 rounded-lg overflow-hidden bg-gray-50 relative flex items-center justify-center border border-gray-100/60 mb-2">
-                      <img
-                        src={getProductImage(prod)}
-                        alt={prod.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        onError={(e) => {
-                          e.target.src = 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=300&auto=format&fit=crop&q=80';
-                        }}
-                      />
-                      {/* Floating Stock Tag */}
-                      <span
-                        className={`absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded-md text-[9px] font-semibold backdrop-blur-xs shadow-xs ${
-                          prod.stock <= prod.min_stock
-                            ? 'bg-rose-50/90 text-rose-700 border border-rose-200'
-                            : 'bg-white/90 text-gray-700 border border-gray-200/60'
-                        }`}
+              {products.map(prod => {
+                const displayPriceUsd = isCasheaActive ? prod.price_cashea : prod.price_usd_tienda;
+                const displayPriceBs = isCasheaActive ? prod.price_cashea_bs : prod.price_bs;
+
+                return (
+                  <div
+                    key={prod.id}
+                    onClick={() => onProductClick(prod)}
+                    className={`bg-white rounded-xl border transition-all cursor-pointer flex flex-col justify-between p-2.5 sm:p-3 group relative ${
+                      isCasheaActive
+                        ? 'border-purple-200 hover:border-purple-500 hover:shadow-purple-100 shadow-xs'
+                        : 'border-gray-100 hover:border-[#00a884]/40 hover:shadow-sm'
+                    }`}
+                  >
+                    <div>
+                      {/* Thumbnail Image Box */}
+                      <div className="w-full h-24 sm:h-28 rounded-lg overflow-hidden bg-gray-50 relative flex items-center justify-center border border-gray-100/60 mb-2">
+                        <img
+                          src={getProductImage(prod)}
+                          alt={prod.name}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          onError={(e) => {
+                            e.target.src = 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=300&auto=format&fit=crop&q=80';
+                          }}
+                        />
+                        {/* Floating Stock Tag */}
+                        <span
+                          className={`absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded-md text-[9px] font-semibold backdrop-blur-xs shadow-xs ${
+                            prod.stock <= prod.min_stock
+                              ? 'bg-rose-50/90 text-rose-700 border border-rose-200'
+                              : 'bg-white/90 text-gray-700 border border-gray-200/60'
+                          }`}
+                        >
+                          {prod.stock} {prod.unit}
+                        </span>
+
+                        {isCasheaActive && (
+                          <span className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded-md text-[8px] font-black bg-purple-700 text-white shadow-xs">
+                            CASHEA
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Category & Name */}
+                      <div className="text-[9px] font-bold uppercase tracking-wider text-gray-400">
+                        {prod.category}
+                      </div>
+                      <h4
+                        className="font-bold text-xs text-gray-900 group-hover:text-[#00a884] transition-colors line-clamp-2 leading-snug mt-0.5"
+                        title={prod.name}
                       >
-                        {prod.stock} {prod.unit}
-                      </span>
+                        {prod.name}
+                      </h4>
                     </div>
 
-                    {/* Category & Name */}
-                    <div className="text-[9px] font-bold uppercase tracking-wider text-gray-400">
-                      {prod.category}
-                    </div>
-                    <h4
-                      className="font-bold text-xs text-gray-900 group-hover:text-[#4f46e5] transition-colors line-clamp-2 leading-snug mt-0.5"
-                      title={prod.name}
-                    >
-                      {prod.name}
-                    </h4>
-                  </div>
-
-                  {/* Dual Currency Price */}
-                  <div className="pt-2 border-t border-gray-100 mt-2">
-                    <div className="text-sm sm:text-base font-extrabold text-gray-900 font-mono tracking-tight leading-none">
-                      Bs. {Number(prod.price_bs).toLocaleString('es-VE', { minimumFractionDigits: 2 })}
-                    </div>
-                    <div className="flex items-center justify-between text-[10px] font-mono mt-1 text-gray-500">
-                      <span className="font-medium text-gray-600">${Number(prod.price_usd_tienda).toFixed(2)} Tienda</span>
-                      <span className="font-semibold text-[#4f46e5]">${Number(prod.price_usd_bcv).toFixed(2)} BCV</span>
+                    {/* Clean Pricing: No BCV Clutter! */}
+                    <div className="pt-2 border-t border-gray-100 mt-2">
+                      <div className="flex items-baseline justify-between">
+                        <span className={`text-base font-extrabold font-mono tracking-tight leading-none ${isCasheaActive ? 'text-purple-700' : 'text-gray-900'}`}>
+                          ${Number(displayPriceUsd).toFixed(2)}
+                        </span>
+                        <span className="text-[11px] font-bold text-gray-500 font-mono">
+                          Bs. {Number(displayPriceBs).toLocaleString('es-VE', { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             /* =================================================== */
@@ -192,59 +250,61 @@ export default function PosView({
                     <th className="pb-2.5">Código</th>
                     <th className="pb-2.5">Producto</th>
                     <th className="pb-2.5">Stock</th>
-                    <th className="pb-2.5 text-right">Bs.</th>
-                    <th className="pb-2.5 text-right">USD Tienda</th>
-                    <th className="pb-2.5 text-right">USD BCV</th>
+                    <th className="pb-2.5 text-right">Precio USD ($)</th>
+                    <th className="pb-2.5 text-right">Precio Bs.</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
-                  {products.map(prod => (
-                    <tr
-                      key={prod.id}
-                      onClick={() => onProductClick(prod)}
-                      className="hover:bg-gray-50/80 transition-colors cursor-pointer group"
-                    >
-                      <td className="py-2 pl-2">
-                        <div className="w-8 h-8 rounded-lg overflow-hidden bg-gray-50 border border-gray-100 shrink-0">
-                          <img
-                            src={getProductImage(prod)}
-                            alt={prod.name}
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              e.target.src = 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=300&auto=format&fit=crop&q=80';
-                            }}
-                          />
-                        </div>
-                      </td>
-                      <td className="py-2 font-mono text-[11px] font-medium text-gray-500">{prod.code}</td>
-                      <td className="py-2">
-                        <div className="font-bold text-xs text-gray-900 group-hover:text-[#4f46e5] transition-colors">
-                          {prod.name}
-                        </div>
-                        <div className="text-[10px] text-gray-400">{prod.category} • [{prod.unit}]</div>
-                      </td>
-                      <td className="py-2 font-medium">
-                        <span
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                            prod.stock <= prod.min_stock
-                              ? 'bg-rose-50 text-rose-700'
-                              : 'bg-gray-100 text-gray-700'
-                          }`}
-                        >
-                          {prod.stock} {prod.unit}
-                        </span>
-                      </td>
-                      <td className="py-2 text-right font-mono font-bold text-gray-900 text-xs">
-                        Bs. {prod.price_bs.toLocaleString('es-VE')}
-                      </td>
-                      <td className="py-2 text-right font-mono text-gray-600 text-xs">
-                        ${prod.price_usd_tienda.toFixed(2)}
-                      </td>
-                      <td className="py-2 text-right font-mono font-semibold text-[#4f46e5] text-xs">
-                        ${prod.price_usd_bcv.toFixed(2)}
-                      </td>
-                    </tr>
-                  ))}
+                  {products.map(prod => {
+                    const displayPriceUsd = isCasheaActive ? prod.price_cashea : prod.price_usd_tienda;
+                    const displayPriceBs = isCasheaActive ? prod.price_cashea_bs : prod.price_bs;
+
+                    return (
+                      <tr
+                        key={prod.id}
+                        onClick={() => onProductClick(prod)}
+                        className="hover:bg-gray-50/80 transition-colors cursor-pointer group"
+                      >
+                        <td className="py-2 pl-2">
+                          <div className="w-8 h-8 rounded-lg overflow-hidden bg-gray-50 border border-gray-100 shrink-0">
+                            <img
+                              src={getProductImage(prod)}
+                              alt={prod.name}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                e.target.src = 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=300&auto=format&fit=crop&q=80';
+                              }}
+                            />
+                          </div>
+                        </td>
+                        <td className="py-2 font-mono text-[11px] font-medium text-gray-500">{prod.code}</td>
+                        <td className="py-2">
+                          <div className="font-bold text-xs text-gray-900 group-hover:text-[#00a884] transition-colors">
+                            {prod.name}
+                          </div>
+                          <div className="text-[10px] text-gray-400">{prod.category} • [{prod.unit}]</div>
+                        </td>
+                        <td className="py-2 font-medium">
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                              prod.stock <= prod.min_stock
+                                ? 'bg-rose-50 text-rose-700'
+                                : 'bg-gray-100 text-gray-700'
+                            }`}
+                          >
+                            {prod.stock} {prod.unit}
+                          </span>
+                        </td>
+                        <td className="py-2 text-right font-mono font-bold text-gray-900 text-xs">
+                          ${displayPriceUsd.toFixed(2)}
+                          {isCasheaActive && <span className="ml-1 text-[9px] text-purple-700 font-bold">Cashea</span>}
+                        </td>
+                        <td className="py-2 text-right font-mono font-bold text-[#00a884] text-xs">
+                          Bs. {displayPriceBs.toLocaleString('es-VE')}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -258,14 +318,21 @@ export default function PosView({
           {/* Header */}
           <div className="flex items-center justify-between pb-2.5 border-b border-gray-100">
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-lg bg-indigo-50 text-[#4f46e5] flex items-center justify-center font-bold">
+              <div className="w-6 h-6 rounded-lg bg-emerald-50 text-[#00a884] flex items-center justify-center font-bold">
                 <ShoppingCart className="w-3.5 h-3.5" />
               </div>
               <h3 className="font-bold text-xs sm:text-sm text-gray-900">Orden de Venta</h3>
             </div>
-            <span className="text-[10px] bg-gray-100 text-gray-700 font-semibold px-2 py-0.5 rounded-full">
-              {cart.length} {cart.length === 1 ? 'ítem' : 'ítems'}
-            </span>
+            <div className="flex items-center gap-1.5">
+              {isCasheaActive && (
+                <span className="text-[9px] bg-purple-100 text-purple-800 font-black px-1.5 py-0.5 rounded-md">
+                  CASHEA
+                </span>
+              )}
+              <span className="text-[10px] bg-gray-100 text-gray-700 font-semibold px-2 py-0.5 rounded-full">
+                {cart.length} {cart.length === 1 ? 'ítem' : 'ítems'}
+              </span>
+            </div>
           </div>
 
           {/* Customer Input with Autocomplete */}
@@ -340,10 +407,10 @@ export default function PosView({
                   {/* Subtotal */}
                   <div className="text-right min-w-[65px]">
                     <div className="font-mono font-bold text-xs text-gray-900">
-                      Bs. {(item.price_bs * item.quantity).toLocaleString('es-VE', { minimumFractionDigits: 2 })}
-                    </div>
-                    <div className="font-mono text-[10px] text-gray-500">
                       ${(item.price_usd_tienda * item.quantity).toFixed(2)}
+                    </div>
+                    <div className="font-mono text-[10px] text-[#00a884]">
+                      Bs. {(item.price_bs * item.quantity).toLocaleString('es-VE')}
                     </div>
                   </div>
 
@@ -358,45 +425,63 @@ export default function PosView({
             )}
           </div>
 
-          {/* Totals Breakdown */}
+          {/* Totals Breakdown (Clean, Zero BCV Clutter!) */}
           <div className="pt-2 border-t border-gray-100 space-y-2">
             <div className="p-3 rounded-xl bg-gray-50 border border-gray-100 space-y-1.5">
               <div className="flex justify-between items-baseline">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Total Bolívares:</span>
-                <span className="text-xl sm:text-2xl font-black font-mono text-gray-900 tracking-tight">
-                  Bs. {cartTotals.total_bs.toLocaleString('es-VE', { minimumFractionDigits: 2 })}
+                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Total Dólares:</span>
+                <span className="text-2xl font-black font-mono text-gray-900 tracking-tight">
+                  ${cartTotals.total_usd_tienda.toFixed(2)}
                 </span>
               </div>
 
               <div className="h-px bg-gray-200/60" />
 
               <div className="flex justify-between items-center text-xs">
-                <span className="text-gray-500 font-medium">USD (Tasa Tienda):</span>
-                <span className="font-mono font-bold text-gray-900">
-                  ${cartTotals.total_usd_tienda.toFixed(2)}
+                <span className="text-gray-500 font-medium">Equivalente en Bolívares:</span>
+                <span className="font-mono font-black text-[#00a884] text-sm">
+                  Bs. {cartTotals.total_bs.toLocaleString('es-VE', { minimumFractionDigits: 2 })}
                 </span>
               </div>
 
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-gray-500 font-medium">USD (Tasa BCV):</span>
-                <span className="font-mono font-bold text-[#00a884]">
-                  ${cartTotals.total_usd_bcv.toFixed(2)}
-                </span>
+              <div className="flex justify-between items-center text-[10px] text-gray-400 pt-0.5">
+                <span>Tasa de Cambio:</span>
+                <span className="font-mono font-medium">Bs. {Number(settings?.tasa_interna || 960).toFixed(2)} / $</span>
               </div>
             </div>
 
-            <div className="flex gap-2 pt-0.5">
+            {/* Presupuesto Button & Cobrar Button */}
+            <div className="space-y-1.5 pt-0.5">
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={clearCart}
+                  disabled={cart.length === 0}
+                  className="px-3 py-2 rounded-xl border border-gray-200 text-gray-500 hover:bg-gray-50 text-xs font-medium transition-all disabled:opacity-40 cursor-pointer"
+                >
+                  Vaciar
+                </button>
+                <button
+                  type="button"
+                  onClick={onGenerateQuote}
+                  disabled={cart.length === 0}
+                  className="flex-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold py-2 px-3 rounded-xl border border-indigo-200/60 transition-all flex items-center justify-center gap-1.5 text-xs disabled:opacity-40 cursor-pointer"
+                  title="Generar cotización sin descontar inventario"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>Presupuesto</span>
+                </button>
+              </div>
+
               <button
-                onClick={clearCart}
-                disabled={cart.length === 0}
-                className="px-3 py-2 rounded-xl border border-gray-200 text-gray-500 hover:bg-gray-50 text-xs font-medium transition-all disabled:opacity-40 cursor-pointer"
-              >
-                Vaciar
-              </button>
-              <button
+                type="button"
                 onClick={onOpenCheckout}
                 disabled={cart.length === 0}
-                className="flex-1 bg-[#00a884] hover:bg-[#008f6f] text-white font-semibold py-2 px-3 rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 text-xs disabled:opacity-40 cursor-pointer"
+                className={`w-full text-white font-bold py-2.5 px-3 rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 text-xs disabled:opacity-40 cursor-pointer ${
+                  isCasheaActive
+                    ? 'bg-purple-600 hover:bg-purple-700'
+                    : 'bg-[#00a884] hover:bg-[#008f6f]'
+                }`}
               >
                 <DollarSign className="w-3.5 h-3.5" />
                 <span>Cobrar Orden [F4]</span>

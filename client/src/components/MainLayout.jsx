@@ -17,7 +17,9 @@ import {
   ChevronDown,
   Menu,
   X,
-  Sparkles
+  Sparkles,
+  FileText,
+  CreditCard
 } from 'lucide-react';
 
 export default function MainLayout({
@@ -139,7 +141,7 @@ export default function MainLayout({
               </button>
             </div>
 
-            {/* Pastilla de Tasa de Cambio (Estilo 💵 1$ = Bs 883,40 de la foto) */}
+            {/* Pastilla de Tasa de Cambio (Estilo 💵 1$ = Bs 960,00) */}
             {!sidebarCollapsed ? (
               <button
                 onClick={onOpenRatesModal}
@@ -147,7 +149,7 @@ export default function MainLayout({
                 className="w-full py-1.5 px-3 rounded-xl bg-gray-50 hover:bg-gray-100 border border-gray-200/60 flex items-center justify-center gap-1.5 font-mono text-[11px] font-bold text-gray-800 transition-colors cursor-pointer group"
               >
                 <span>💵</span>
-                <span>1$ = Bs {Number(settings.tasa_bcv || settings.tasa_interna).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                <span>1$ = Bs {Number(settings.tasa_interna || 960).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </button>
             ) : (
               <button
@@ -168,10 +170,16 @@ export default function MainLayout({
             {/* 2. Punto de Venta */}
             {renderNavItem('pos', 'Punto de Venta', Store, { badge: cartCount })}
 
-            {/* 3. Clientes */}
+            {/* 3. Presupuestos (Cotizaciones) */}
+            {renderNavItem('quotes', 'Presupuestos', FileText)}
+
+            {/* 4. Cuentas por Cobrar (Créditos) */}
+            {renderNavItem('credits', 'Cuentas por Cobrar', CreditCard)}
+
+            {/* 5. Clientes */}
             {renderNavItem('customers', 'Clientes', Users)}
 
-            {/* 4. Registrar Producto (Abre directamente modal de registro) */}
+            {/* 6. Registrar Producto */}
             {renderNavItem('register-product', 'Registrar Producto', PackagePlus, {
               onClick: () => {
                 if (onOpenNewProductModal) onOpenNewProductModal();
@@ -179,17 +187,17 @@ export default function MainLayout({
               }
             })}
 
-            {/* 5. Editar Producto (Vista de edición rápida) */}
+            {/* 7. Editar Producto */}
             {renderNavItem('edit-product', 'Editar Producto', Pencil)}
 
-            {/* 6. Inventario */}
+            {/* 8. Inventario */}
             {renderNavItem('inventory', 'Inventario', Boxes, { badge: lowStockCount })}
 
-            {/* 7. Ventas Realizadas */}
+            {/* 9. Ventas Realizadas */}
             {renderNavItem('sales', 'Ventas Realizadas', ShoppingCart)}
 
-            {/* 8. Finanzas */}
-            {renderNavItem('finances', 'Finanzas', TrendingUp)}
+            {/* 10. Finanzas */}
+            {renderNavItem('finances', 'Finanzas & Cierre Z', TrendingUp)}
           </div>
 
           {/* Línea Divisoria */}

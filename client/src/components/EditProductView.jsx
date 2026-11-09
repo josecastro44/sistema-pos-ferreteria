@@ -128,17 +128,17 @@ export default function EditProductView({
                     </div>
                   </div>
 
-                  {/* Pricing info */}
+                  {/* Pricing info (Clean, Zero BCV!) */}
                   <div className="p-2.5 rounded-xl bg-white border border-gray-100 mt-3 space-y-1 text-xs">
                     <div className="flex justify-between items-baseline">
-                      <span className="text-[10px] text-gray-400 font-bold uppercase">Precio Bolívares:</span>
+                      <span className="text-[10px] text-gray-400 font-bold uppercase">Precio Normal ($):</span>
                       <span className="font-mono font-black text-gray-900 text-sm">
-                        Bs. {Number(prod.price_bs).toLocaleString('es-VE', { minimumFractionDigits: 2 })}
+                        ${Number(prod.price_usd_tienda).toFixed(2)}
                       </span>
                     </div>
-                    <div className="flex justify-between text-[11px] font-mono text-gray-500 pt-0.5 border-t border-gray-50">
-                      <span>USD Tienda: <b className="text-gray-800">${Number(prod.price_usd_tienda).toFixed(2)}</b></span>
-                      <span>BCV: <b className="text-[#00a884]">${Number(prod.price_usd_bcv).toFixed(2)}</b></span>
+                    <div className="flex justify-between text-[11px] font-mono pt-0.5 border-t border-gray-50">
+                      <span className="text-gray-500">Bs: <b className="text-gray-800">Bs. {Number(prod.price_bs).toLocaleString('es-VE')}</b></span>
+                      <span className="text-purple-700 font-bold">🟣 Cashea: <b>${Number(prod.price_cashea).toFixed(2)}</b></span>
                     </div>
                   </div>
                 </div>

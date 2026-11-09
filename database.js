@@ -27,21 +27,22 @@ if (!isNativeSQLite) {
     address: 'Calle Principal, Local 1',
     tasa_interna: 960.00,
     tasa_bcv: 883.40,
+    cashea_percent: 15.0,
     receipt_footer: '¡Gracias por su compra!'
   };
 
   let productsState = [
-    { id: 1, code: 'HER-001', name: 'Llave Inglesa Ajustable 10"', category: 'Herramientas', unit: 'und', allow_decimals: 0, cost_usd: 28.00, price_usd: 40.00, stock: 12, min_stock: 3, synonyms: 'llave, llave inglesa, ajustable, perico, 10 pulgadas', image_url: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=300&auto=format&fit=crop&q=80', created_at: new Date().toISOString() },
-    { id: 2, code: 'ELE-001', name: 'Electrodos 6013 1/8" (por Kilo)', category: 'Herrería y Soldadura', unit: 'kg', allow_decimals: 1, cost_usd: 3.10, price_usd: 4.50, stock: 65.5, min_stock: 10.0, synonyms: 'electrodo, electrodos, soldadura, varilla soldar, 6013, 1/8', image_url: 'https://images.unsplash.com/photo-1504917599217-d4dc5ebe6122?w=300&auto=format&fit=crop&q=80', created_at: new Date().toISOString() },
-    { id: 3, code: 'PLO-001', name: 'Cinta Teflón 3/4" x 10m', category: 'Plomería', unit: 'und', allow_decimals: 0, cost_usd: 0.40, price_usd: 0.85, stock: 120, min_stock: 20, synonyms: 'teflon, cinta rosca, tirro plomo, cinta selladora, 3/4', image_url: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=300&auto=format&fit=crop&q=80', created_at: new Date().toISOString() },
-    { id: 4, code: 'PLO-002', name: 'Llave de Paso 1/2" Bronce Esfera', category: 'Plomería', unit: 'und', allow_decimals: 0, cost_usd: 4.50, price_usd: 6.50, stock: 28, min_stock: 5, synonyms: 'llave de paso, valvula, valvula esfera, bronce, 1/2', image_url: 'https://images.unsplash.com/photo-1542013936693-884638332954?w=300&auto=format&fit=crop&q=80', created_at: new Date().toISOString() },
-    { id: 5, code: 'CON-001', name: 'Manguera de Nivel Transparente 1/2" (por Metro)', category: 'Construcción', unit: 'metro', allow_decimals: 1, cost_usd: 0.35, price_usd: 0.60, stock: 100.0, min_stock: 20.0, synonyms: 'manguera nivel, nivel, albanil, transparente, 1/2', image_url: 'https://images.unsplash.com/photo-1517646287270-a5a9ca602e5c?w=300&auto=format&fit=crop&q=80', created_at: new Date().toISOString() },
-    { id: 6, code: 'ELE-002', name: 'Cable THW Calibre #12 Cobre (por Metro)', category: 'Electricidad', unit: 'metro', allow_decimals: 1, cost_usd: 0.50, price_usd: 0.75, stock: 180.0, min_stock: 30.0, synonyms: 'cable 12, alambre, thw, cobre, 7 hilos, electricidad', image_url: 'https://images.unsplash.com/photo-1558346490-a72e53ae2d4f?w=300&auto=format&fit=crop&q=80', created_at: new Date().toISOString() },
-    { id: 7, code: 'FIJ-001', name: 'Clavos de Acero para Concreto 2" (por Kilo)', category: 'Fijación y Tornillos', unit: 'kg', allow_decimals: 1, cost_usd: 2.10, price_usd: 3.20, stock: 45.0, min_stock: 10.0, synonyms: 'clavos, clavos acero, concreto, 2 pulgadas, fijacion', image_url: 'https://images.unsplash.com/photo-1586864387967-d02ef85d93e8?w=300&auto=format&fit=crop&q=80', created_at: new Date().toISOString() },
-    { id: 8, code: 'ILU-001', name: 'Bombillo LED 12W Rosca E27 Luz Blanca', category: 'Iluminación', unit: 'und', allow_decimals: 0, cost_usd: 0.90, price_usd: 1.50, stock: 75, min_stock: 15, synonyms: 'bombillo led, foco, bombilla, 12w, e27, luz blanca', image_url: 'https://images.unsplash.com/photo-1550985616-10810253b84d?w=300&auto=format&fit=crop&q=80', created_at: new Date().toISOString() },
-    { id: 9, code: 'HER-002', name: 'Disco de Corte para Metal 4 1/2" x 1mm', category: 'Herramientas', unit: 'und', allow_decimals: 0, cost_usd: 0.65, price_usd: 1.20, stock: 150, min_stock: 25, synonyms: 'disco corte, disco esmeril, 4 1/2, 4.5, metal, corte fino', image_url: 'https://images.unsplash.com/photo-1572981779307-38b8cabb2407?w=300&auto=format&fit=crop&q=80', created_at: new Date().toISOString() },
-    { id: 10, code: 'ADH-001', name: 'Pega Tanque Epóxico Doble Componente', category: 'Adhesivos y Químicos', unit: 'und', allow_decimals: 0, cost_usd: 2.20, price_usd: 3.50, stock: 40, min_stock: 8, synonyms: 'pega tanque, soldadura fria, epoxico, pegatank, pegatanque', image_url: 'https://images.unsplash.com/photo-1607400201515-c2c41c07d307?w=300&auto=format&fit=crop&q=80', created_at: new Date().toISOString() },
-    { id: 11, code: 'PLO-003', name: 'Tubo PVC Aguas Negras 2" (Tubo 3 Metros)', category: 'Plomería', unit: 'und', allow_decimals: 0, cost_usd: 3.50, price_usd: 5.20, stock: 22, min_stock: 5, synonyms: 'tubo pvc, aguas negras, drenaje, tuberia, 2 pulgadas, 3m', image_url: 'https://images.unsplash.com/photo-1590496793929-36417d3117de?w=300&auto=format&fit=crop&q=80', created_at: new Date().toISOString() }
+    { id: 1, code: 'HER-001', name: 'Llave Inglesa Ajustable 10"', category: 'Herramientas', unit: 'und', allow_decimals: 0, cost_usd: 28.00, price_usd: 40.00, price_cashea: 46.00, stock: 12, min_stock: 3, synonyms: 'llave, llave inglesa, ajustable, perico, 10 pulgadas', image_url: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=300&auto=format&fit=crop&q=80', created_at: new Date().toISOString() },
+    { id: 2, code: 'ELE-001', name: 'Electrodos 6013 1/8" (por Kilo)', category: 'Herrería y Soldadura', unit: 'kg', allow_decimals: 1, cost_usd: 3.10, price_usd: 4.50, price_cashea: 5.20, stock: 65.5, min_stock: 10.0, synonyms: 'electrodo, electrodos, soldadura, varilla soldar, 6013, 1/8', image_url: 'https://images.unsplash.com/photo-1504917599217-d4dc5ebe6122?w=300&auto=format&fit=crop&q=80', created_at: new Date().toISOString() },
+    { id: 3, code: 'PLO-001', name: 'Cinta Teflón 3/4" x 10m', category: 'Plomería', unit: 'und', allow_decimals: 0, cost_usd: 0.40, price_usd: 0.85, price_cashea: 1.00, stock: 120, min_stock: 20, synonyms: 'teflon, cinta rosca, tirro plomo, cinta selladora, 3/4', image_url: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=300&auto=format&fit=crop&q=80', created_at: new Date().toISOString() },
+    { id: 4, code: 'PLO-002', name: 'Llave de Paso 1/2" Bronce Esfera', category: 'Plomería', unit: 'und', allow_decimals: 0, cost_usd: 4.50, price_usd: 6.50, price_cashea: 7.50, stock: 28, min_stock: 5, synonyms: 'llave de paso, valvula, valvula esfera, bronce, 1/2', image_url: 'https://images.unsplash.com/photo-1542013936693-884638332954?w=300&auto=format&fit=crop&q=80', created_at: new Date().toISOString() },
+    { id: 5, code: 'CON-001', name: 'Manguera de Nivel Transparente 1/2" (por Metro)', category: 'Construcción', unit: 'metro', allow_decimals: 1, cost_usd: 0.35, price_usd: 0.60, price_cashea: 0.70, stock: 100.0, min_stock: 20.0, synonyms: 'manguera nivel, nivel, albanil, transparente, 1/2', image_url: 'https://images.unsplash.com/photo-1517646287270-a5a9ca602e5c?w=300&auto=format&fit=crop&q=80', created_at: new Date().toISOString() },
+    { id: 6, code: 'ELE-002', name: 'Cable THW Calibre #12 Cobre (por Metro)', category: 'Electricidad', unit: 'metro', allow_decimals: 1, cost_usd: 0.50, price_usd: 0.75, price_cashea: 0.90, stock: 180.0, min_stock: 30.0, synonyms: 'cable 12, alambre, thw, cobre, 7 hilos, electricidad', image_url: 'https://images.unsplash.com/photo-1558346490-a72e53ae2d4f?w=300&auto=format&fit=crop&q=80', created_at: new Date().toISOString() },
+    { id: 7, code: 'FIJ-001', name: 'Clavos de Acero para Concreto 2" (por Kilo)', category: 'Fijación y Tornillos', unit: 'kg', allow_decimals: 1, cost_usd: 2.10, price_usd: 3.20, price_cashea: 3.70, stock: 45.0, min_stock: 10.0, synonyms: 'clavos, clavos acero, concreto, 2 pulgadas, fijacion', image_url: 'https://images.unsplash.com/photo-1586864387967-d02ef85d93e8?w=300&auto=format&fit=crop&q=80', created_at: new Date().toISOString() },
+    { id: 8, code: 'ILU-001', name: 'Bombillo LED 12W Rosca E27 Luz Blanca', category: 'Iluminación', unit: 'und', allow_decimals: 0, cost_usd: 0.90, price_usd: 1.50, price_cashea: 1.75, stock: 75, min_stock: 15, synonyms: 'bombillo led, foco, bombilla, 12w, e27, luz blanca', image_url: 'https://images.unsplash.com/photo-1550985616-10810253b84d?w=300&auto=format&fit=crop&q=80', created_at: new Date().toISOString() },
+    { id: 9, code: 'HER-002', name: 'Disco de Corte para Metal 4 1/2" x 1mm', category: 'Herramientas', unit: 'und', allow_decimals: 0, cost_usd: 0.65, price_usd: 1.20, price_cashea: 1.40, stock: 150, min_stock: 25, synonyms: 'disco corte, disco esmeril, 4 1/2, 4.5, metal, corte fino', image_url: 'https://images.unsplash.com/photo-1572981779307-38b8cabb2407?w=300&auto=format&fit=crop&q=80', created_at: new Date().toISOString() },
+    { id: 10, code: 'ADH-001', name: 'Pega Tanque Epóxico Doble Componente', category: 'Adhesivos y Químicos', unit: 'und', allow_decimals: 0, cost_usd: 2.20, price_usd: 3.50, price_cashea: 4.00, stock: 40, min_stock: 8, synonyms: 'pega tanque, soldadura fria, epoxico, pegatank, pegatanque', image_url: 'https://images.unsplash.com/photo-1607400201515-c2c41c07d307?w=300&auto=format&fit=crop&q=80', created_at: new Date().toISOString() },
+    { id: 11, code: 'PLO-003', name: 'Tubo PVC Aguas Negras 2" (Tubo 3 Metros)', category: 'Plomería', unit: 'und', allow_decimals: 0, cost_usd: 3.50, price_usd: 5.20, price_cashea: 6.00, stock: 22, min_stock: 5, synonyms: 'tubo pvc, aguas negras, drenaje, tuberia, 2 pulgadas, 3m', image_url: 'https://images.unsplash.com/photo-1590496793929-36417d3117de?w=300&auto=format&fit=crop&q=80', created_at: new Date().toISOString() }
   ];
 
   let customersState = [
@@ -57,10 +58,16 @@ if (!isNativeSQLite) {
 
   let salesState = [];
   let saleItemsState = [];
+  let creditAbonosState = [];
+  let quotesState = [];
+  let cashClosingsState = [];
   let nextSaleId = 1;
   let nextProductId = 12;
   let nextCustomerId = 4;
   let nextUserId = 3;
+  let nextAbonoId = 1;
+  let nextQuoteId = 1;
+  let nextClosingId = 1;
 
   db = {
     pragma: () => {},
@@ -109,6 +116,12 @@ if (!isNativeSQLite) {
               total_bs: matching.reduce((sum, s) => sum + s.total_bs, 0),
               tickets: matching.length
             };
+          }
+          if (cleanSql.includes('SELECT * FROM quotes WHERE id = ?')) {
+            return quotesState.find(q => q.id === parseInt(params[0])) || null;
+          }
+          if (cleanSql.includes('FROM cash_closings WHERE closing_date = ?')) {
+            return cashClosingsState.find(c => c.closing_date === params[0]) || null;
           }
           if (cleanSql.includes('SELECT SUM(p.cost_usd * si.quantity)')) {
             const dateStr = params[0];
@@ -163,6 +176,25 @@ if (!isNativeSQLite) {
             return [...usersState];
           }
 
+          if (cleanSql.includes('FROM quotes')) {
+            return [...quotesState].reverse();
+          }
+
+          if (cleanSql.includes('FROM credit_abonos')) {
+            if (cleanSql.includes('WHERE sale_id = ?')) {
+              return creditAbonosState.filter(a => a.sale_id === parseInt(params[0]));
+            }
+            return [...creditAbonosState].reverse();
+          }
+
+          if (cleanSql.includes('FROM cash_closings')) {
+            return [...cashClosingsState].reverse();
+          }
+
+          if (cleanSql.includes('FROM sales WHERE is_credit = 1')) {
+            return salesState.filter(s => s.is_credit === 1);
+          }
+
           if (cleanSql.includes('FROM sales WHERE DATE(created_at')) {
             const dateStr = params[0];
             return salesState.filter(s => s.created_at.startsWith(dateStr));
@@ -204,13 +236,14 @@ if (!isNativeSQLite) {
 
         run: (...params) => {
           if (cleanSql.includes('UPDATE settings')) {
-            const [store_name, rif, phone, address, tasa_interna, tasa_bcv, receipt_footer] = params;
+            const [store_name, rif, phone, address, tasa_interna, tasa_bcv, cashea_percent, receipt_footer] = params;
             if (store_name) settingsState.store_name = store_name;
             if (rif) settingsState.rif = rif;
             if (phone) settingsState.phone = phone;
             if (address) settingsState.address = address;
             if (tasa_interna) settingsState.tasa_interna = parseFloat(tasa_interna);
             if (tasa_bcv) settingsState.tasa_bcv = parseFloat(tasa_bcv);
+            if (cashea_percent !== undefined && cashea_percent !== null) settingsState.cashea_percent = parseFloat(cashea_percent);
             if (receipt_footer) settingsState.receipt_footer = receipt_footer;
             return { changes: 1 };
           }
@@ -351,28 +384,140 @@ if (!isNativeSQLite) {
           }
 
           if (cleanSql.includes('INSERT INTO sales')) {
-            const [sale_number, customer_name, customer_id, cashier_name, tasa_interna, tasa_bcv, total_usd_tienda, total_bs, total_usd_bcv, payment_method, amount_paid_bs, amount_paid_usd, change_bs, change_usd, notes] = params;
-            const newSale = {
-              id: nextSaleId++,
-              sale_number,
-              customer_name,
+            const saleObj = typeof params[0] === 'object' && params.length === 1 ? params[0] : null;
+            let newSale;
+            if (saleObj) {
+              newSale = {
+                id: nextSaleId++,
+                ...saleObj,
+                created_at: new Date().toISOString()
+              };
+            } else {
+              const [sale_number, customer_name, customer_id, cashier_name, tasa_interna, tasa_bcv, total_usd_tienda, total_bs, total_usd_bcv, payment_method, amount_paid_bs, amount_paid_usd, change_bs, change_usd, notes, is_cashea, is_credit, credit_due_date, credit_status, credit_balance_usd, paid_efectivo_usd, paid_zelle_usd, paid_binance_usd, paid_efectivo_bs, paid_pago_movil_bs, paid_punto_bs, cashea_initial_usd, cashea_financed_usd] = params;
+              newSale = {
+                id: nextSaleId++,
+                sale_number,
+                customer_name,
+                customer_id: customer_id ? parseInt(customer_id) : null,
+                cashier_name: cashier_name || 'Admin Hebert',
+                tasa_interna: parseFloat(tasa_interna),
+                tasa_bcv: parseFloat(tasa_bcv),
+                total_usd_tienda: parseFloat(total_usd_tienda),
+                total_bs: parseFloat(total_bs),
+                total_usd_bcv: parseFloat(total_usd_bcv),
+                payment_method,
+                amount_paid_bs: parseFloat(amount_paid_bs) || 0,
+                amount_paid_usd: parseFloat(amount_paid_usd) || 0,
+                change_bs: parseFloat(change_bs) || 0,
+                change_usd: parseFloat(change_usd) || 0,
+                notes: notes || '',
+                is_cashea: is_cashea ? 1 : 0,
+                is_credit: is_credit ? 1 : 0,
+                credit_due_date: credit_due_date || null,
+                credit_status: credit_status || 'none',
+                credit_balance_usd: parseFloat(credit_balance_usd) || 0,
+                paid_efectivo_usd: parseFloat(paid_efectivo_usd) || 0,
+                paid_zelle_usd: parseFloat(paid_zelle_usd) || 0,
+                paid_binance_usd: parseFloat(paid_binance_usd) || 0,
+                paid_efectivo_bs: parseFloat(paid_efectivo_bs) || 0,
+                paid_pago_movil_bs: parseFloat(paid_pago_movil_bs) || 0,
+                paid_punto_bs: parseFloat(paid_punto_bs) || 0,
+                cashea_initial_usd: parseFloat(cashea_initial_usd) || 0,
+                cashea_financed_usd: parseFloat(cashea_financed_usd) || 0,
+                created_at: new Date().toISOString()
+              };
+            }
+            salesState.push(newSale);
+            return { lastInsertRowid: newSale.id, changes: 1 };
+          }
+
+          if (cleanSql.includes('UPDATE sales SET credit_balance_usd')) {
+            const [balance, status, id] = params;
+            const sale = salesState.find(s => s.id === parseInt(id));
+            if (sale) {
+              sale.credit_balance_usd = parseFloat(balance);
+              if (status) sale.credit_status = status;
+              return { changes: 1 };
+            }
+            return { changes: 0 };
+          }
+
+          if (cleanSql.includes('INSERT INTO quotes')) {
+            const [quote_number, customer_name, customer_id, customer_phone, cashier_name, items_json, total_usd, total_bs, is_cashea, tasa_interna, notes] = params;
+            const newQuote = {
+              id: nextQuoteId++,
+              quote_number,
+              customer_name: customer_name || 'Cliente Mostrador',
               customer_id: customer_id ? parseInt(customer_id) : null,
+              customer_phone: customer_phone || '',
               cashier_name: cashier_name || 'Admin Hebert',
-              tasa_interna: parseFloat(tasa_interna),
-              tasa_bcv: parseFloat(tasa_bcv),
-              total_usd_tienda: parseFloat(total_usd_tienda),
+              items_json,
+              total_usd: parseFloat(total_usd),
               total_bs: parseFloat(total_bs),
-              total_usd_bcv: parseFloat(total_usd_bcv),
-              payment_method,
-              amount_paid_bs: parseFloat(amount_paid_bs) || 0,
-              amount_paid_usd: parseFloat(amount_paid_usd) || 0,
-              change_bs: parseFloat(change_bs) || 0,
-              change_usd: parseFloat(change_usd) || 0,
+              is_cashea: is_cashea ? 1 : 0,
+              tasa_interna: parseFloat(tasa_interna),
+              status: 'open',
               notes: notes || '',
               created_at: new Date().toISOString()
             };
-            salesState.push(newSale);
-            return { lastInsertRowid: newSale.id, changes: 1 };
+            quotesState.push(newQuote);
+            return { lastInsertRowid: newQuote.id, changes: 1 };
+          }
+
+          if (cleanSql.includes('UPDATE quotes SET status')) {
+            const [status, id] = params;
+            const q = quotesState.find(item => item.id === parseInt(id));
+            if (q) {
+              q.status = status;
+              return { changes: 1 };
+            }
+            return { changes: 0 };
+          }
+
+          if (cleanSql.includes('INSERT INTO credit_abonos')) {
+            const [sale_id, amount_usd, amount_bs, payment_method, cashier_name, notes] = params;
+            const newAbono = {
+              id: nextAbonoId++,
+              sale_id: parseInt(sale_id),
+              amount_usd: parseFloat(amount_usd),
+              amount_bs: parseFloat(amount_bs),
+              payment_method,
+              cashier_name: cashier_name || 'Admin Hebert',
+              notes: notes || '',
+              created_at: new Date().toISOString()
+            };
+            creditAbonosState.push(newAbono);
+            return { lastInsertRowid: newAbono.id, changes: 1 };
+          }
+
+          if (cleanSql.includes('INSERT INTO cash_closings')) {
+            const [closing_date, cashier_name, initial_cash_usd, initial_cash_bs, system_efectivo_usd, system_zelle_usd, system_binance_usd, system_efectivo_bs, system_pago_movil_bs, system_punto_bs, system_cashea_usd, system_credit_usd, total_system_usd, total_system_bs, actual_cash_usd, actual_cash_bs, diff_usd, diff_bs, notes] = params;
+            const newClosing = {
+              id: nextClosingId++,
+              closing_date,
+              closed_at: new Date().toISOString(),
+              cashier_name,
+              initial_cash_usd: parseFloat(initial_cash_usd) || 0,
+              initial_cash_bs: parseFloat(initial_cash_bs) || 0,
+              system_efectivo_usd: parseFloat(system_efectivo_usd) || 0,
+              system_zelle_usd: parseFloat(system_zelle_usd) || 0,
+              system_binance_usd: parseFloat(system_binance_usd) || 0,
+              system_efectivo_bs: parseFloat(system_efectivo_bs) || 0,
+              system_pago_movil_bs: parseFloat(system_pago_movil_bs) || 0,
+              system_punto_bs: parseFloat(system_punto_bs) || 0,
+              system_cashea_usd: parseFloat(system_cashea_usd) || 0,
+              system_credit_usd: parseFloat(system_credit_usd) || 0,
+              total_system_usd: parseFloat(total_system_usd) || 0,
+              total_system_bs: parseFloat(total_system_bs) || 0,
+              actual_cash_usd: parseFloat(actual_cash_usd) || 0,
+              actual_cash_bs: parseFloat(actual_cash_bs) || 0,
+              diff_usd: parseFloat(diff_usd) || 0,
+              diff_bs: parseFloat(diff_bs) || 0,
+              notes: notes || '',
+              created_at: new Date().toISOString()
+            };
+            cashClosingsState.push(newClosing);
+            return { lastInsertRowid: newClosing.id, changes: 1 };
           }
 
           if (cleanSql.includes('INSERT INTO sale_items')) {
@@ -486,17 +631,80 @@ if (!isNativeSQLite) {
         pin TEXT DEFAULT '1234',
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       );
+
+      CREATE TABLE IF NOT EXISTS credit_abonos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        sale_id INTEGER NOT NULL REFERENCES sales(id) ON DELETE CASCADE,
+        amount_usd REAL NOT NULL,
+        amount_bs REAL NOT NULL,
+        payment_method TEXT NOT NULL,
+        cashier_name TEXT DEFAULT 'Admin Hebert',
+        notes TEXT DEFAULT '',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS quotes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        quote_number TEXT UNIQUE NOT NULL,
+        customer_name TEXT DEFAULT 'Cliente Mostrador',
+        customer_id INTEGER,
+        customer_phone TEXT DEFAULT '',
+        cashier_name TEXT DEFAULT 'Admin Hebert',
+        items_json TEXT NOT NULL,
+        total_usd REAL NOT NULL,
+        total_bs REAL NOT NULL,
+        is_cashea INTEGER DEFAULT 0,
+        tasa_interna REAL NOT NULL,
+        status TEXT DEFAULT 'open',
+        notes TEXT DEFAULT '',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS cash_closings (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        closing_date TEXT NOT NULL,
+        opened_at DATETIME,
+        closed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        cashier_name TEXT NOT NULL,
+        initial_cash_usd REAL DEFAULT 0.0,
+        initial_cash_bs REAL DEFAULT 0.0,
+        system_efectivo_usd REAL DEFAULT 0.0,
+        system_zelle_usd REAL DEFAULT 0.0,
+        system_binance_usd REAL DEFAULT 0.0,
+        system_efectivo_bs REAL DEFAULT 0.0,
+        system_pago_movil_bs REAL DEFAULT 0.0,
+        system_punto_bs REAL DEFAULT 0.0,
+        system_cashea_usd REAL DEFAULT 0.0,
+        system_credit_usd REAL DEFAULT 0.0,
+        total_system_usd REAL DEFAULT 0.0,
+        total_system_bs REAL DEFAULT 0.0,
+        actual_cash_usd REAL DEFAULT 0.0,
+        actual_cash_bs REAL DEFAULT 0.0,
+        diff_usd REAL DEFAULT 0.0,
+        diff_bs REAL DEFAULT 0.0,
+        notes TEXT DEFAULT '',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
     `);
 
-    try {
-      db.exec("ALTER TABLE products ADD COLUMN image_url TEXT DEFAULT ''");
-    } catch (e) {}
-    try {
-      db.exec("ALTER TABLE sales ADD COLUMN cashier_name TEXT DEFAULT 'Admin Hebert'");
-    } catch (e) {}
-    try {
-      db.exec("ALTER TABLE sales ADD COLUMN customer_id INTEGER");
-    } catch (e) {}
+    try { db.exec("ALTER TABLE settings ADD COLUMN cashea_percent REAL DEFAULT 15.0"); } catch (e) {}
+    try { db.exec("ALTER TABLE products ADD COLUMN image_url TEXT DEFAULT ''"); } catch (e) {}
+    try { db.exec("ALTER TABLE products ADD COLUMN price_cashea REAL DEFAULT 0.0"); } catch (e) {}
+    try { db.exec("ALTER TABLE sales ADD COLUMN cashier_name TEXT DEFAULT 'Admin Hebert'"); } catch (e) {}
+    try { db.exec("ALTER TABLE sales ADD COLUMN customer_id INTEGER"); } catch (e) {}
+    try { db.exec("ALTER TABLE sales ADD COLUMN is_cashea INTEGER DEFAULT 0"); } catch (e) {}
+    try { db.exec("ALTER TABLE sales ADD COLUMN is_credit INTEGER DEFAULT 0"); } catch (e) {}
+    try { db.exec("ALTER TABLE sales ADD COLUMN credit_due_date TEXT"); } catch (e) {}
+    try { db.exec("ALTER TABLE sales ADD COLUMN credit_status TEXT DEFAULT 'none'"); } catch (e) {}
+    try { db.exec("ALTER TABLE sales ADD COLUMN credit_balance_usd REAL DEFAULT 0.0"); } catch (e) {}
+    try { db.exec("ALTER TABLE sales ADD COLUMN paid_efectivo_usd REAL DEFAULT 0.0"); } catch (e) {}
+    try { db.exec("ALTER TABLE sales ADD COLUMN paid_zelle_usd REAL DEFAULT 0.0"); } catch (e) {}
+    try { db.exec("ALTER TABLE sales ADD COLUMN paid_binance_usd REAL DEFAULT 0.0"); } catch (e) {}
+    try { db.exec("ALTER TABLE sales ADD COLUMN paid_efectivo_bs REAL DEFAULT 0.0"); } catch (e) {}
+    try { db.exec("ALTER TABLE sales ADD COLUMN paid_pago_movil_bs REAL DEFAULT 0.0"); } catch (e) {}
+    try { db.exec("ALTER TABLE sales ADD COLUMN paid_punto_bs REAL DEFAULT 0.0"); } catch (e) {}
+    try { db.exec("ALTER TABLE sales ADD COLUMN cashea_initial_usd REAL DEFAULT 0.0"); } catch (e) {}
+    try { db.exec("ALTER TABLE sales ADD COLUMN cashea_financed_usd REAL DEFAULT 0.0"); } catch (e) {}
 
     // Ensure default settings exist
     const existingSettings = db.prepare('SELECT * FROM settings WHERE id = 1').get();

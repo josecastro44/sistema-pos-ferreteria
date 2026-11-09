@@ -5,6 +5,8 @@ import CustomersView from './components/CustomersView';
 import EditProductView from './components/EditProductView';
 import FinancesView from './components/FinancesView';
 import UsersView from './components/UsersView';
+import CreditsView from './components/CreditsView';
+import QuotesView from './components/QuotesView';
 import {
   Plus,
   Edit,
@@ -22,6 +24,8 @@ import {
   Search,
   Box,
   UserCheck,
+  FileText,
+  Lock,
   Image as ImageIcon
 } from 'lucide-react';
 
@@ -51,20 +55,22 @@ export default function App() {
 
   // Global settings & rates
   const [settings, setSettings] = useState({
-    store_name: 'Ferretería Hebert',
+    store_name: 'Bodega Jeym',
     rif: 'J-12345678-9',
     phone: '0414-0000000',
     address: 'Calle Principal, Local 1',
     tasa_interna: 960.00,
-    tasa_bcv: 866.56,
+    tasa_bcv: 883.40,
+    cashea_percent: 15.0,
     receipt_footer: '¡Gracias por su compra!'
   });
 
   // Rates Modal
   const [isRatesModalOpen, setIsRatesModalOpen] = useState(false);
-  const [tempRates, setTempRates] = useState({ tasa_interna: 960, tasa_bcv: 866.56 });
+  const [tempRates, setTempRates] = useState({ tasa_interna: 960, cashea_percent: 15 });
 
-  // POS State
+  // POS State & Cashea Mode Toggle
+  const [isCasheaActive, setIsCasheaActive] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [products, setProducts] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('Todos');
@@ -72,16 +78,31 @@ export default function App() {
   const [customerName, setCustomerName] = useState('Cliente Mostrador');
   const searchInputRef = useRef(null);
 
+  // Quote (Presupuesto) Modal State
+  const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
+  const [quoteCustomerPhone, setQuoteCustomerPhone] = useState('');
+  const [quoteNotes, setQuoteNotes] = useState('');
+  const [submittingQuote, setSubmittingQuote] = useState(false);
+
   // Decimal Quantity Modal for items like kg / meters
   const [decimalItemModal, setDecimalItemModal] = useState(null);
   const [decimalQtyInput, setDecimalQtyInput] = useState('1');
 
   // Checkout Modal State
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
-  const [checkoutMethod, setCheckoutMethod] = useState('bolivares'); // 'bolivares', 'dolares_tienda', 'dolares_bcv', 'mixto'
+  const [checkoutMethod, setCheckoutMethod] = useState('bolivares'); // 'bolivares', 'dolares', 'cashea', 'credito', 'mixto'
   const [bsSubMethod, setBsSubMethod] = useState('Pago Móvil'); // 'Pago Móvil', 'Punto de Venta', 'Efectivo Bs'
+  const [usdSubMethod, setUsdSubMethod] = useState('efectivo_usd'); // 'efectivo_usd', 'zelle_usd', 'binance_usd'
   const [amountPaidBs, setAmountPaidBs] = useState('');
   const [amountPaidUsd, setAmountPaidUsd] = useState('');
+  const [casheaInitialPaid, setCasheaInitialPaid] = useState('');
+  const [casheaInitialMethod, setCasheaInitialMethod] = useState('pago_movil_bs');
+  const [creditDueDate, setCreditDueDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 15);
+    return d.toISOString().split('T')[0];
+  });
+  const [creditInitialAbono, setCreditInitialAbono] = useState('0');
   const [mixtoUsdPaid, setMixtoUsdPaid] = useState('');
 
   // Receipt Modal State
@@ -141,7 +162,11 @@ export default function App() {
       const res = await fetch(`${API_BASE}/settings`);
       const data = await res.json();
       setSettings(data);
-      setTempRates({ tasa_interna: data.tasa_interna, tasa_bcv: data.tasa_bcv });
+      setTempRates({
+        tasa_interna: data.tasa_interna,
+        tasa_bcv: data.tasa_bcv,
+        cashea_percent: data.cashea_percent ?? 15
+      });
     } catch (err) {
       console.error('Error fetching settings:', err);
     }
@@ -244,13 +269,14 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           tasa_interna: parseFloat(tempRates.tasa_interna),
-          tasa_bcv: parseFloat(tempRates.tasa_bcv)
+          tasa_bcv: parseFloat(tempRates.tasa_bcv),
+          cashea_percent: parseFloat(tempRates.cashea_percent) || 15
         })
       });
       const updated = await res.json();
       setSettings(updated);
       setIsRatesModalOpen(false);
-      showToast('¡Tasas actualizadas con éxito!');
+      showToast('¡Tasas y Recargo Cashea actualizados con éxito!');
       fetchProducts(searchQuery);
       fetchDailyReport();
     } catch (err) {
@@ -313,17 +339,17 @@ export default function App() {
     setCart(prev => prev.filter(item => item.product_id !== productId));
   };
 
-  // Cart Totals
+  // Cart Totals (Adapta automáticamente a modo Cashea sin enredos de BCV)
   const cartTotals = cart.reduce((acc, item) => {
-    acc.total_usd_tienda += item.price_usd_tienda * item.quantity;
-    acc.total_bs += item.price_bs * item.quantity;
-    acc.total_usd_bcv += item.price_usd_bcv * item.quantity;
+    const unitPriceUsd = isCasheaActive ? (item.price_cashea || item.price_usd_tienda) : item.price_usd_tienda;
+    const unitPriceBs = isCasheaActive ? (item.price_cashea_bs || item.price_bs) : item.price_bs;
+    acc.total_usd_tienda += unitPriceUsd * item.quantity;
+    acc.total_bs += unitPriceBs * item.quantity;
     return acc;
-  }, { total_usd_tienda: 0, total_bs: 0, total_usd_bcv: 0 });
+  }, { total_usd_tienda: 0, total_bs: 0 });
 
   cartTotals.total_usd_tienda = Math.round(cartTotals.total_usd_tienda * 100) / 100;
   cartTotals.total_bs = Math.round(cartTotals.total_bs * 100) / 100;
-  cartTotals.total_usd_bcv = Math.round(cartTotals.total_usd_bcv * 100) / 100;
 
   // Checkout Calculations
   const openCheckout = () => {
@@ -333,7 +359,9 @@ export default function App() {
     }
     setCheckoutMethod('bolivares');
     setAmountPaidBs(cartTotals.total_bs.toString());
-    setAmountPaidUsd('');
+    setAmountPaidUsd(cartTotals.total_usd_tienda.toString());
+    setCasheaInitialPaid((cartTotals.total_usd_tienda * 0.4).toFixed(2));
+    setCreditInitialAbono('0');
     setMixtoUsdPaid('');
     setIsCheckoutOpen(true);
   };
@@ -347,25 +375,64 @@ export default function App() {
       let changeUsd = 0;
       let notes = '';
 
+      let paidEfectivoUsd = 0;
+      let paidZelleUsd = 0;
+      let paidBinanceUsd = 0;
+      let paidEfectivoBs = 0;
+      let paidPagoMovilBs = 0;
+      let paidPuntoBs = 0;
+      let casheaInitialUsd = 0;
+      let casheaFinancedUsd = 0;
+
+      const isCasheaSale = isCasheaActive || checkoutMethod === 'cashea';
+      const isCreditSale = checkoutMethod === 'credito';
+
+      if (isCreditSale && (!customerName || customerName.trim() === 'Cliente Mostrador')) {
+        throw new Error('Para ventas a crédito o facturas abiertas debe seleccionar o ingresar el nombre del cliente');
+      }
+
       if (checkoutMethod === 'bolivares') {
         paidBs = parseFloat(amountPaidBs) || cartTotals.total_bs;
         changeBs = Math.max(0, paidBs - cartTotals.total_bs);
         notes = `Bolívares (${bsSubMethod})`;
-      } else if (checkoutMethod === 'dolares_tienda') {
+        if (bsSubMethod === 'Pago Móvil') paidPagoMovilBs = cartTotals.total_bs;
+        else if (bsSubMethod === 'Punto de Venta') paidPuntoBs = cartTotals.total_bs;
+        else paidEfectivoBs = cartTotals.total_bs;
+      } else if (checkoutMethod === 'dolares') {
         paidUsd = parseFloat(amountPaidUsd) || cartTotals.total_usd_tienda;
         changeUsd = Math.max(0, paidUsd - cartTotals.total_usd_tienda);
         changeBs = Math.round((changeUsd * settings.tasa_interna) * 100) / 100;
-        notes = 'Divisas Efectivo / Zelle (Tasa Tienda)';
-      } else if (checkoutMethod === 'dolares_bcv') {
-        paidUsd = parseFloat(amountPaidUsd) || cartTotals.total_usd_bcv;
-        changeUsd = Math.max(0, paidUsd - cartTotals.total_usd_bcv);
-        changeBs = Math.round((changeUsd * settings.tasa_bcv) * 100) / 100;
-        notes = 'Divisas (Tasa Oficial BCV)';
+        
+        if (usdSubMethod === 'efectivo_usd') {
+          paidEfectivoUsd = cartTotals.total_usd_tienda;
+          notes = 'Divisas Efectivo ($ Billetes en caja)';
+        } else if (usdSubMethod === 'zelle_usd') {
+          paidZelleUsd = cartTotals.total_usd_tienda;
+          notes = 'Zelle (Transferencia bancaria USD)';
+        } else if (usdSubMethod === 'binance_usd') {
+          paidBinanceUsd = cartTotals.total_usd_tienda;
+          notes = 'Binance / USDT (Cripto)';
+        }
+      } else if (checkoutMethod === 'cashea') {
+        casheaInitialUsd = parseFloat(casheaInitialPaid) || 0;
+        casheaFinancedUsd = Math.max(0, cartTotals.total_usd_tienda - casheaInitialUsd);
+        notes = `Cashea: Inicial $${casheaInitialUsd} (${casheaInitialMethod}) + $${casheaFinancedUsd} Financiado en cuotas`;
+        if (casheaInitialMethod === 'efectivo_usd') paidEfectivoUsd = casheaInitialUsd;
+        else if (casheaInitialMethod === 'pago_movil_bs') paidPagoMovilBs = Math.round(casheaInitialUsd * settings.tasa_interna * 100) / 100;
+        else if (casheaInitialMethod === 'punto_bs') paidPuntoBs = Math.round(casheaInitialUsd * settings.tasa_interna * 100) / 100;
+        else if (casheaInitialMethod === 'zelle_usd') paidZelleUsd = casheaInitialUsd;
+        else if (casheaInitialMethod === 'binance_usd') paidBinanceUsd = casheaInitialUsd;
+      } else if (checkoutMethod === 'credito') {
+        const abonoInit = parseFloat(creditInitialAbono) || 0;
+        notes = `Venta a Crédito / Factura Abierta (Vence: ${creditDueDate}). Abono inicial: $${abonoInit}`;
+        if (abonoInit > 0) paidEfectivoUsd = abonoInit;
       } else if (checkoutMethod === 'mixto') {
         paidUsd = parseFloat(mixtoUsdPaid) || 0;
         const remainingInBs = Math.max(0, cartTotals.total_bs - (paidUsd * settings.tasa_interna));
         paidBs = remainingInBs;
-        notes = `Pago Mixto: $${paidUsd} Efectivo + Bs. ${paidBs.toLocaleString('es-VE')} en Bolívares`;
+        paidEfectivoUsd = paidUsd;
+        paidPagoMovilBs = paidBs;
+        notes = `Pago Mixto: $${paidUsd} Divisas + Bs. ${paidBs.toLocaleString('es-VE')} en Bolívares`;
       }
 
       const payload = {
@@ -378,6 +445,18 @@ export default function App() {
         change_bs: changeBs,
         change_usd: changeUsd,
         notes,
+        is_cashea: isCasheaSale ? 1 : 0,
+        is_credit: isCreditSale ? 1 : 0,
+        credit_due_date: isCreditSale ? creditDueDate : null,
+        credit_balance_usd: isCreditSale ? Math.max(0, cartTotals.total_usd_tienda - (parseFloat(creditInitialAbono) || 0)) : 0,
+        paid_efectivo_usd: paidEfectivoUsd,
+        paid_zelle_usd: paidZelleUsd,
+        paid_binance_usd: paidBinanceUsd,
+        paid_efectivo_bs: paidEfectivoBs,
+        paid_pago_movil_bs: paidPagoMovilBs,
+        paid_punto_bs: paidPuntoBs,
+        cashea_initial_usd: casheaInitialUsd,
+        cashea_financed_usd: casheaFinancedUsd,
         items: cart.map(i => ({ product_id: i.product_id, quantity: i.quantity }))
       };
 
@@ -396,11 +475,81 @@ export default function App() {
       setIsCheckoutOpen(false);
       setCart([]);
       setPrintedSale(result);
-      showToast('¡Venta completada con éxito!');
+      showToast(isCreditSale ? '¡Venta a Crédito registrada con éxito!' : '¡Venta completada con éxito!');
       fetchProducts(searchQuery);
       fetchDailyReport();
     } catch (err) {
       showToast(err.message, 'error');
+    }
+  };
+
+  // Cargar presupuesto al carrito del punto de venta
+  const handleLoadQuoteToCart = (quoteItems, custName) => {
+    if (!quoteItems || !quoteItems.length) return;
+    const newCart = quoteItems.map(it => {
+      const prod = products.find(p => p.id === it.product_id) || {};
+      return {
+        product_id: it.product_id,
+        code: prod.code || '',
+        name: it.product_name,
+        unit: it.unit || 'und',
+        price_usd_tienda: it.price_usd || prod.price_usd_tienda || 0,
+        price_bs: it.price_bs || prod.price_bs || 0,
+        price_cashea: prod.price_cashea || it.price_usd || 0,
+        price_cashea_bs: prod.price_cashea_bs || it.price_bs || 0,
+        quantity: it.quantity
+      };
+    });
+    setCart(newCart);
+    if (custName) setCustomerName(custName);
+    setActiveTab('pos');
+    showToast('¡Cotización cargada al Punto de Venta!');
+  };
+
+  // Crear Presupuesto (Sin descontar inventario)
+  const handleCreateQuote = async () => {
+    if (cart.length === 0) {
+      showToast('El carrito está vacío', 'error');
+      return;
+    }
+    setSubmittingQuote(true);
+    try {
+      const payload = {
+        customer_name: customerName || 'Cliente Cotización',
+        customer_phone: quoteCustomerPhone || '',
+        notes: quoteNotes || 'Cotización de materiales y herramientas. Los precios en dólares se mantienen. Los montos en bolívares están sujetos a la tasa de cambio vigente al momento de concretar la compra.',
+        created_by: currentUser?.name || 'Admin Hebert',
+        items: cart.map(item => ({
+          product_id: item.product_id,
+          product_name: item.name,
+          quantity: item.quantity,
+          unit: item.unit || 'und',
+          price_usd: item.price_usd_tienda,
+          price_bs: item.price_bs
+        }))
+      };
+
+      const res = await fetch(`${API_BASE}/quotes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || 'Error al generar presupuesto');
+      }
+
+      setIsQuoteModalOpen(false);
+      setCart([]);
+      setQuoteCustomerPhone('');
+      setQuoteNotes('');
+      showToast('¡Presupuesto generado con éxito!');
+      setActiveTab('quotes');
+    } catch (err) {
+      showToast(err.message, 'error');
+    } finally {
+      setSubmittingQuote(false);
     }
   };
 
@@ -485,6 +634,9 @@ export default function App() {
           setSelectedCategory={setSelectedCategory}
           posViewMode={posViewMode}
           setPosViewMode={setPosViewMode}
+          isCasheaActive={isCasheaActive}
+          setIsCasheaActive={setIsCasheaActive}
+          settings={settings}
           cart={cart}
           customerName={customerName}
           setCustomerName={setCustomerName}
@@ -495,6 +647,13 @@ export default function App() {
           removeFromCart={removeFromCart}
           clearCart={() => setCart([])}
           onOpenCheckout={openCheckout}
+          onGenerateQuote={() => {
+            if (cart.length === 0) {
+              showToast('El carrito está vacío para cotizar', 'error');
+              return;
+            }
+            setIsQuoteModalOpen(true);
+          }}
         />
       )}
 
@@ -828,10 +987,32 @@ export default function App() {
       )}
 
       {/* ========================================================= */}
-      {/* VISTA 8: FINANZAS & ARQUEO DE CAJA                        */}
+      {/* VISTA 7: PRESUPUESTOS & COTIZACIONES                      */}
+      {/* ========================================================= */}
+      {activeTab === 'quotes' && (
+        <QuotesView
+          settings={settings}
+          onLoadQuoteToCart={handleLoadQuoteToCart}
+          showToast={showToast}
+        />
+      )}
+
+      {/* ========================================================= */}
+      {/* VISTA 8: CRÉDITOS & FACTURAS ABIERTAS                     */}
+      {/* ========================================================= */}
+      {activeTab === 'credits' && (
+        <CreditsView
+          settings={settings}
+          currentUser={currentUser}
+          showToast={showToast}
+        />
+      )}
+
+      {/* ========================================================= */}
+      {/* VISTA 9: FINANZAS & CIERRE DE CAJA DIARIO                 */}
       {/* ========================================================= */}
       {(activeTab === 'finances' || activeTab === 'reports') && (
-        <FinancesView settings={settings} />
+        <FinancesView settings={settings} currentUser={currentUser} />
       )}
 
       {/* ========================================================= */}
@@ -974,25 +1155,28 @@ export default function App() {
                     step="0.01"
                     value={tempRates.tasa_interna}
                     onChange={(e) => setTempRates({ ...tempRates, tasa_interna: e.target.value })}
-                    className="w-full pl-10 pr-3 py-2 bg-white border border-gray-200 rounded-lg font-mono font-bold text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/15 focus:border-[#4f46e5]"
+                    className="w-full pl-10 pr-3 py-2 bg-white border border-gray-200 rounded-lg font-mono font-bold text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#00a884]/20 focus:border-[#00a884]"
                   />
                 </div>
               </div>
 
-              <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-200/80">
-                <label className="font-semibold text-gray-700 block mb-1">
-                  Tasa Oficial Banco Central (BCV)
+              <div className="p-3.5 bg-purple-50/60 rounded-xl border border-purple-200/80">
+                <label className="font-semibold text-purple-900 block mb-1">
+                  Recargo Global Cashea (%)
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3 top-2.5 font-mono font-bold text-gray-400">Bs.</span>
+                  <span className="absolute left-3 top-2.5 font-mono font-bold text-purple-400">%</span>
                   <input
                     type="number"
-                    step="0.01"
-                    value={tempRates.tasa_bcv}
-                    onChange={(e) => setTempRates({ ...tempRates, tasa_bcv: e.target.value })}
-                    className="w-full pl-10 pr-3 py-2 bg-white border border-gray-200 rounded-lg font-mono font-bold text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/15 focus:border-[#4f46e5]"
+                    step="1"
+                    value={tempRates.cashea_percent ?? 15}
+                    onChange={(e) => setTempRates({ ...tempRates, cashea_percent: e.target.value })}
+                    className="w-full pl-10 pr-3 py-2 bg-white border border-purple-200 rounded-lg font-mono font-bold text-sm text-purple-900 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
                   />
                 </div>
+                <p className="text-[11px] text-purple-700 mt-1">
+                  Porcentaje automático para calcular el Precio Cashea en productos sin precio individual.
+                </p>
               </div>
             </div>
 
@@ -1100,35 +1284,43 @@ export default function App() {
               </button>
             </div>
 
-            {/* Total Box */}
+            {/* Total Box (Clean, Zero BCV!) */}
             <div className="bg-gray-900 text-white p-5 rounded-2xl flex items-center justify-between shadow-xs">
               <div>
-                <span className="text-[11px] uppercase tracking-wider text-gray-400 font-semibold">Total a Cobrar</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] uppercase tracking-wider text-gray-400 font-semibold">Total a Cobrar</span>
+                  {(isCasheaActive || checkoutMethod === 'cashea') && (
+                    <span className="text-[9px] bg-purple-500/30 text-purple-300 font-bold px-2 py-0.5 rounded-full border border-purple-400/40">
+                      🟣 Cashea
+                    </span>
+                  )}
+                </div>
                 <div className="text-3xl font-black font-mono text-emerald-400 mt-0.5">
                   Bs. {cartTotals.total_bs.toLocaleString('es-VE', { minimumFractionDigits: 2 })}
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-xs text-gray-300 font-mono font-bold bg-white/10 px-2.5 py-1 rounded-lg">
-                  ${cartTotals.total_usd_tienda.toFixed(2)} Tienda
+                <div className="text-sm font-mono font-black text-white bg-white/10 px-3 py-1.5 rounded-xl border border-white/10">
+                  ${cartTotals.total_usd_tienda.toFixed(2)} USD
                 </div>
-                <div className="text-xs text-sky-300 font-mono font-bold bg-white/10 px-2.5 py-1 rounded-lg mt-1">
-                  ${cartTotals.total_usd_bcv.toFixed(2)} BCV
+                <div className="text-[10px] text-gray-400 font-mono mt-1">
+                  Tasa: Bs. {Number(settings.tasa_interna || 960).toFixed(2)}
                 </div>
               </div>
             </div>
 
-            {/* 4 One-Click Buttons */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {/* 5 One-Click Buttons: Bolívares, Divisas 3en1, Cashea, Crédito, Mixto */}
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+              {/* 1. Bolívares */}
               <button
                 type="button"
                 onClick={() => {
                   setCheckoutMethod('bolivares');
                   setAmountPaidBs(cartTotals.total_bs.toString());
                 }}
-                className={`p-3 rounded-xl border text-center transition-all ${
+                className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
                   checkoutMethod === 'bolivares'
-                    ? 'border-[#4f46e5] bg-indigo-50/60 text-[#4f46e5] ring-2 ring-[#4f46e5]/20 font-bold'
+                    ? 'border-[#00a884] bg-emerald-50 text-[#00a884] ring-2 ring-[#00a884]/20 font-bold'
                     : 'border-gray-200 bg-white hover:bg-gray-50 text-gray-700'
                 }`}
               >
@@ -1136,47 +1328,68 @@ export default function App() {
                 <div className="text-[10px] text-gray-400 mt-0.5">Punto / Pago Móvil</div>
               </button>
 
+              {/* 2. Divisas (3 en 1) */}
               <button
                 type="button"
                 onClick={() => {
-                  setCheckoutMethod('dolares_tienda');
+                  setCheckoutMethod('dolares');
                   setAmountPaidUsd(cartTotals.total_usd_tienda.toString());
                 }}
-                className={`p-3 rounded-xl border text-center transition-all ${
-                  checkoutMethod === 'dolares_tienda'
-                    ? 'border-[#4f46e5] bg-indigo-50/60 text-[#4f46e5] ring-2 ring-[#4f46e5]/20 font-bold'
+                className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
+                  checkoutMethod === 'dolares'
+                    ? 'border-[#00a884] bg-emerald-50 text-[#00a884] ring-2 ring-[#00a884]/20 font-bold'
                     : 'border-gray-200 bg-white hover:bg-gray-50 text-gray-700'
                 }`}
               >
-                <div className="text-xs font-bold">$ Tienda</div>
-                <div className="text-[10px] text-gray-400 mt-0.5">${cartTotals.total_usd_tienda.toFixed(2)}</div>
+                <div className="text-xs font-bold">Divisas ($)</div>
+                <div className="text-[10px] text-gray-400 mt-0.5">Efectivo / Zelle / Binance</div>
               </button>
 
+              {/* 3. Cashea */}
               <button
                 type="button"
                 onClick={() => {
-                  setCheckoutMethod('dolares_bcv');
-                  setAmountPaidUsd(cartTotals.total_usd_bcv.toString());
+                  setCheckoutMethod('cashea');
+                  setIsCasheaActive(true);
+                  setCasheaInitialPaid((cartTotals.total_usd_tienda * 0.4).toFixed(2));
                 }}
-                className={`p-3 rounded-xl border text-center transition-all ${
-                  checkoutMethod === 'dolares_bcv'
-                    ? 'border-[#4f46e5] bg-indigo-50/60 text-[#4f46e5] ring-2 ring-[#4f46e5]/20 font-bold'
+                className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
+                  checkoutMethod === 'cashea'
+                    ? 'border-purple-600 bg-purple-50 text-purple-700 ring-2 ring-purple-600/20 font-bold'
                     : 'border-gray-200 bg-white hover:bg-gray-50 text-gray-700'
                 }`}
               >
-                <div className="text-xs font-bold">$ BCV</div>
-                <div className="text-[10px] text-gray-400 mt-0.5">${cartTotals.total_usd_bcv.toFixed(2)}</div>
+                <div className="text-xs font-bold">🟣 Cashea</div>
+                <div className="text-[10px] text-purple-600 mt-0.5">Precio 2 (+{settings?.cashea_percent || 15}%)</div>
               </button>
 
+              {/* 4. A Crédito */}
+              <button
+                type="button"
+                onClick={() => {
+                  setCheckoutMethod('credito');
+                  setCreditInitialAbono('0');
+                }}
+                className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
+                  checkoutMethod === 'credito'
+                    ? 'border-indigo-600 bg-indigo-50 text-indigo-700 ring-2 ring-indigo-600/20 font-bold'
+                    : 'border-gray-200 bg-white hover:bg-gray-50 text-gray-700'
+                }`}
+              >
+                <div className="text-xs font-bold">🤝 A Crédito</div>
+                <div className="text-[10px] text-gray-400 mt-0.5">Factura Abierta</div>
+              </button>
+
+              {/* 5. Pago Mixto */}
               <button
                 type="button"
                 onClick={() => {
                   setCheckoutMethod('mixto');
                   setMixtoUsdPaid('10');
                 }}
-                className={`p-3 rounded-xl border text-center transition-all ${
+                className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
                   checkoutMethod === 'mixto'
-                    ? 'border-[#4f46e5] bg-indigo-50/60 text-[#4f46e5] ring-2 ring-[#4f46e5]/20 font-bold'
+                    ? 'border-amber-600 bg-amber-50 text-amber-700 ring-2 ring-amber-600/20 font-bold'
                     : 'border-gray-200 bg-white hover:bg-gray-50 text-gray-700'
                 }`}
               >
@@ -1187,6 +1400,9 @@ export default function App() {
 
             {/* Sub-method panel */}
             <div className="p-4 rounded-xl bg-gray-50 border border-gray-100 space-y-3">
+              {/* =================================================== */}
+              {/* SUB-MÉTODO: BOLÍVARES                               */}
+              {/* =================================================== */}
               {checkoutMethod === 'bolivares' && (
                 <>
                   <div className="flex gap-2">
@@ -1195,7 +1411,7 @@ export default function App() {
                         key={sub}
                         type="button"
                         onClick={() => setBsSubMethod(sub)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex-1 border transition-all ${
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex-1 border transition-all cursor-pointer ${
                           bsSubMethod === sub
                             ? 'bg-gray-900 text-white border-gray-900'
                             : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-100'
@@ -1215,7 +1431,7 @@ export default function App() {
                       step="0.01"
                       value={amountPaidBs}
                       onChange={(e) => setAmountPaidBs(e.target.value)}
-                      className="w-full p-2.5 bg-white border border-gray-200 rounded-xl font-mono font-bold text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/15 focus:border-[#4f46e5]"
+                      className="w-full p-2.5 bg-white border border-gray-200 rounded-xl font-mono font-bold text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#00a884]/20 focus:border-[#00a884]"
                     />
                   </div>
 
@@ -1230,32 +1446,76 @@ export default function App() {
                 </>
               )}
 
-              {checkoutMethod === 'dolares_tienda' && (
+              {/* =================================================== */}
+              {/* SUB-MÉTODO: DIVISAS (3 EN 1: EFECTIVO, ZELLE, BINANCE) */}
+              {/* =================================================== */}
+              {checkoutMethod === 'dolares' && (
                 <>
                   <div>
+                    <label className="text-xs font-bold text-gray-700 block mb-1.5">
+                      Canal de Pago en Divisas:
+                    </label>
+                    <div className="grid grid-cols-3 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setUsdSubMethod('efectivo_usd')}
+                        className={`p-2 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                          usdSubMethod === 'efectivo_usd'
+                            ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                            : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-100'
+                        }`}
+                      >
+                        💵 Efectivo $ (Billetes)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setUsdSubMethod('zelle_usd')}
+                        className={`p-2 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                          usdSubMethod === 'zelle_usd'
+                            ? 'bg-purple-600 text-white border-purple-600 shadow-xs'
+                            : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-100'
+                        }`}
+                      >
+                        🏦 Zelle (Dólares)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setUsdSubMethod('binance_usd')}
+                        className={`p-2 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                          usdSubMethod === 'binance_usd'
+                            ? 'bg-amber-500 text-white border-amber-500 shadow-xs'
+                            : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-100'
+                        }`}
+                      >
+                        🟡 Binance (USDT)
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
                     <label className="text-xs font-semibold text-gray-700 block mb-1">
-                      Monto Recibido en Dólares ($ Efectivo / Zelle):
+                      Monto Recibido en Dólares ($):
                     </label>
                     <input
                       type="number"
                       step="0.01"
                       value={amountPaidUsd}
                       onChange={(e) => setAmountPaidUsd(e.target.value)}
-                      className="w-full p-2.5 bg-white border border-gray-200 rounded-xl font-mono font-bold text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/15 focus:border-[#4f46e5]"
+                      className="w-full p-2.5 bg-white border border-gray-200 rounded-xl font-mono font-bold text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#00a884]/20 focus:border-[#00a884]"
                     />
                   </div>
 
                   {parseFloat(amountPaidUsd) > cartTotals.total_usd_tienda && (
-                    <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 space-y-1 text-xs">
+                    <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 space-y-1 text-xs">
                       <div className="flex justify-between items-center">
-                        <span className="font-bold text-amber-900">Vuelto en Dólares:</span>
-                        <span className="font-mono font-black text-amber-700 text-sm">
+                        <span className="font-bold text-emerald-900">Vuelto en Dólares:</span>
+                        <span className="font-mono font-black text-emerald-700 text-sm">
                           ${(parseFloat(amountPaidUsd) - cartTotals.total_usd_tienda).toFixed(2)}
                         </span>
                       </div>
                       <div className="flex justify-between items-center text-gray-500">
-                        <span>O en Bolívares (Tasa Tienda):</span>
-                        <span className="font-mono font-bold text-emerald-700">
+                        <span>O en Bolívares (Tasa del Día):</span>
+                        <span className="font-mono font-bold text-teal-800">
                           Bs. {((parseFloat(amountPaidUsd) - cartTotals.total_usd_tienda) * settings.tasa_interna).toLocaleString('es-VE', { minimumFractionDigits: 2 })}
                         </span>
                       </div>
@@ -1264,50 +1524,133 @@ export default function App() {
                 </>
               )}
 
-              {checkoutMethod === 'dolares_bcv' && (
-                <>
-                  <div>
-                    <label className="text-xs font-semibold text-gray-700 block mb-1">
-                      Monto Recibido en Dólares a Tasa BCV:
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={amountPaidUsd}
-                      onChange={(e) => setAmountPaidUsd(e.target.value)}
-                      className="w-full p-2.5 bg-white border border-gray-200 rounded-xl font-mono font-bold text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/15 focus:border-[#4f46e5]"
-                    />
+              {/* =================================================== */}
+              {/* SUB-MÉTODO: CASHEA (PRECIO 2 + INICIAL + FINANCIADO)*/}
+              {/* =================================================== */}
+              {checkoutMethod === 'cashea' && (
+                <div className="space-y-3">
+                  <div className="p-3 rounded-xl bg-purple-50 border border-purple-200 space-y-1.5 text-xs">
+                    <div className="flex justify-between font-bold text-purple-900">
+                      <span>Total Venta Cashea:</span>
+                      <span className="font-mono text-sm">${cartTotals.total_usd_tienda.toFixed(2)} USD</span>
+                    </div>
+                    <div className="flex justify-between text-purple-700 text-[11px]">
+                      <span>Comisión trasladada al cliente:</span>
+                      <span>+{settings?.cashea_percent || 15}%</span>
+                    </div>
                   </div>
 
-                  {parseFloat(amountPaidUsd) > cartTotals.total_usd_bcv && (
-                    <div className="p-3 bg-sky-50 rounded-xl border border-sky-200 text-xs flex justify-between items-center">
-                      <span className="font-bold text-sky-900">Vuelto en Divisas:</span>
-                      <span className="font-mono font-black text-sky-700 text-sm">
-                        ${(parseFloat(amountPaidUsd) - cartTotals.total_usd_bcv).toFixed(2)}
-                      </span>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-semibold text-gray-700 block mb-1">
+                        Monto Inicial a Cobrar ($):
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={casheaInitialPaid}
+                        onChange={(e) => setCasheaInitialPaid(e.target.value)}
+                        placeholder="Inicial (ej. 40%)"
+                        className="w-full p-2.5 bg-white border border-gray-200 rounded-xl font-mono font-bold text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-600"
+                      />
                     </div>
-                  )}
-                </>
+                    <div>
+                      <label className="text-xs font-semibold text-gray-700 block mb-1">
+                        Canal Pago de la Inicial:
+                      </label>
+                      <select
+                        value={casheaInitialMethod}
+                        onChange={(e) => setCasheaInitialMethod(e.target.value)}
+                        className="w-full p-2.5 bg-white border border-gray-200 rounded-xl text-xs font-semibold text-gray-900 focus:outline-none"
+                      >
+                        <option value="pago_movil_bs">📱 Pago Móvil (Bs)</option>
+                        <option value="efectivo_usd">💵 Efectivo Dólares ($)</option>
+                        <option value="punto_bs">💳 Punto de Venta (Bs)</option>
+                        <option value="zelle_usd">🏦 Zelle (Dólares)</option>
+                        <option value="binance_usd">🟡 Binance (USDT)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-gray-100 border border-gray-200 flex justify-between items-center text-xs">
+                    <span className="text-gray-600 font-medium">Saldo Restante Financiado por Cashea:</span>
+                    <span className="font-mono font-black text-purple-700 text-sm">
+                      ${Math.max(0, cartTotals.total_usd_tienda - (parseFloat(casheaInitialPaid) || 0)).toFixed(2)}
+                    </span>
+                  </div>
+                </div>
               )}
 
+              {/* =================================================== */}
+              {/* SUB-MÉTODO: CRÉDITO (FACTURA ABIERTA)               */}
+              {/* =================================================== */}
+              {checkoutMethod === 'credito' && (
+                <div className="space-y-3">
+                  <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 space-y-1">
+                    <div className="font-bold">⚠️ Venta a Crédito / Factura Abierta</div>
+                    <p className="text-[11px] text-amber-800">
+                      El inventario se descontará de inmediato. La factura quedará registrada en "Cuentas por Cobrar" asociada a este cliente.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-bold text-gray-700 block mb-1">
+                        Fecha Límite de Pago (Vencimiento):
+                      </label>
+                      <input
+                        type="date"
+                        value={creditDueDate}
+                        onChange={(e) => setCreditDueDate(e.target.value)}
+                        required
+                        className="w-full p-2.5 bg-white border border-gray-200 rounded-xl font-mono text-xs font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-gray-700 block mb-1">
+                        Abono Inicial (Opcional $):
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={creditInitialAbono}
+                        onChange={(e) => setCreditInitialAbono(e.target.value)}
+                        placeholder="0.00"
+                        className="w-full p-2.5 bg-white border border-gray-200 rounded-xl font-mono font-bold text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-indigo-50 border border-indigo-200 flex justify-between items-center text-xs">
+                    <span className="text-indigo-900 font-bold">Deuda que queda por cobrar:</span>
+                    <span className="font-mono font-black text-indigo-700 text-sm">
+                      ${Math.max(0, cartTotals.total_usd_tienda - (parseFloat(creditInitialAbono) || 0)).toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* =================================================== */}
+              {/* SUB-MÉTODO: PAGO MIXTO                              */}
+              {/* =================================================== */}
               {checkoutMethod === 'mixto' && (
                 <div className="space-y-3">
                   <div>
                     <label className="text-xs font-semibold text-gray-700 block mb-1">
-                      ¿Cuántos Dólares en Efectivo entrega el cliente? ($):
+                      ¿Cuántos Dólares en Divisas entrega el cliente? ($):
                     </label>
                     <input
                       type="number"
-                      step="1"
+                      step="0.5"
                       value={mixtoUsdPaid}
                       onChange={(e) => setMixtoUsdPaid(e.target.value)}
-                      className="w-full p-2.5 bg-white border border-gray-200 rounded-xl font-mono font-bold text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/15 focus:border-[#4f46e5]"
+                      className="w-full p-2.5 bg-white border border-gray-200 rounded-xl font-mono font-bold text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#00a884]/20 focus:border-[#00a884]"
                       placeholder="Ejemplo: 20"
                     />
                   </div>
 
                   {parseFloat(mixtoUsdPaid) > 0 && (
-                    <div className="p-3.5 bg-indigo-50 rounded-xl border border-indigo-100 text-xs space-y-1">
+                    <div className="p-3.5 bg-amber-50 rounded-xl border border-amber-200 text-xs space-y-1">
                       <div className="flex justify-between items-center text-gray-600">
                         <span>Dólares entregados:</span>
                         <strong className="font-mono font-bold text-gray-900">${parseFloat(mixtoUsdPaid).toFixed(2)}</strong>
@@ -1318,9 +1661,9 @@ export default function App() {
                           Bs. {(parseFloat(mixtoUsdPaid) * settings.tasa_interna).toLocaleString('es-VE', { minimumFractionDigits: 2 })}
                         </strong>
                       </div>
-                      <div className="h-px bg-indigo-100 my-1" />
+                      <div className="h-px bg-amber-200 my-1" />
                       <div className="flex justify-between items-baseline font-bold">
-                        <span className="text-xs text-[#4f46e5] uppercase">Resta por cobrar en Bolívares:</span>
+                        <span className="text-xs text-amber-900 uppercase">Resta por cobrar en Bolívares:</span>
                         <span className="text-base font-black text-emerald-700 font-mono">
                           Bs. {Math.max(0, cartTotals.total_bs - (parseFloat(mixtoUsdPaid) * settings.tasa_interna)).toLocaleString('es-VE', { minimumFractionDigits: 2 })}
                         </span>
@@ -1335,17 +1678,111 @@ export default function App() {
               <button
                 type="button"
                 onClick={() => setIsCheckoutOpen(false)}
-                className="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-xs rounded-xl"
+                className="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-xs rounded-xl cursor-pointer"
               >
                 Cancelar
               </button>
               <button
                 type="button"
                 onClick={handleProcessSale}
-                className="flex-1 py-2.5 bg-[#4f46e5] hover:bg-[#4338ca] text-white font-semibold text-xs rounded-xl shadow-xs flex items-center justify-center gap-2"
+                className="flex-1 py-2.5 bg-[#00a884] hover:bg-[#008f6f] text-white font-bold text-xs rounded-xl shadow-xs flex items-center justify-center gap-2 cursor-pointer"
               >
                 <CheckCircle className="w-4 h-4" />
                 <span>CONFIRMAR VENTA E IMPRIMIR</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* MODAL: GENERAR PRESUPUESTO / COTIZACIÓN                   */}
+      {/* ========================================================= */}
+      {isQuoteModalOpen && (
+        <div className="fixed inset-0 bg-gray-900/30 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4 border border-gray-100">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+              <h3 className="font-bold text-base text-gray-900 flex items-center gap-2">
+                <FileText className="w-5 h-5 text-indigo-600" />
+                <span>Generar Presupuesto / Cotización</span>
+              </h3>
+              <button onClick={() => setIsQuoteModalOpen(false)} className="text-gray-400 hover:text-gray-600">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-3 bg-amber-50 rounded-xl border border-amber-200/80 text-xs text-amber-800 space-y-1">
+              <p className="font-bold flex items-center gap-1.5">
+                <span>ℹ️ Cotización informativa</span>
+              </p>
+              <p className="text-[11px] leading-relaxed text-amber-700">
+                No descuenta inventario ni afecta el cierre de caja. Podrás cargarla de nuevo al carrito en 1 clic desde la pestaña <strong>Presupuestos</strong>.
+              </p>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="font-semibold text-gray-700 block mb-1">Nombre del Cliente *</label>
+                <input
+                  type="text"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  placeholder="Ej: Juan Pérez / Taller Mecánico"
+                  className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="font-semibold text-gray-700 block mb-1">Teléfono / WhatsApp</label>
+                <input
+                  type="tel"
+                  value={quoteCustomerPhone}
+                  onChange={(e) => setQuoteCustomerPhone(e.target.value)}
+                  placeholder="Ej: 0414-1234567"
+                  className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 font-mono focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                />
+              </div>
+
+              <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 flex items-center justify-between">
+                <div>
+                  <span className="text-gray-500 block text-[11px]">Artículos a cotizar:</span>
+                  <span className="font-bold text-gray-800 text-sm">{cart.length} productos ({cart.reduce((s, i) => s + i.quantity, 0)} unid.)</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-gray-500 block text-[11px]">Total Cotizado:</span>
+                  <span className="font-black text-[#00a884] text-base">${cartTotals.total_usd_tienda.toFixed(2)}</span>
+                  <span className="block text-[10px] text-gray-400 font-mono">Bs. {cartTotals.total_bs.toLocaleString('es-VE')}</span>
+                </div>
+              </div>
+
+              <div>
+                <label className="font-semibold text-gray-700 block mb-1">Nota de Validez Comercial</label>
+                <textarea
+                  rows={2}
+                  value={quoteNotes}
+                  onChange={(e) => setQuoteNotes(e.target.value)}
+                  placeholder="Los precios en dólares se mantienen. Los montos en bolívares están sujetos a la tasa de cambio vigente al concretar..."
+                  className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-700 text-xs focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsQuoteModalOpen(false)}
+                className="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-xs rounded-xl cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={submittingQuote}
+                onClick={handleCreateQuote}
+                className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-xs flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <FileText className="w-4 h-4" />
+                <span>{submittingQuote ? 'Guardando...' : 'Guardar Cotización'}</span>
               </button>
             </div>
           </div>
@@ -1478,6 +1915,7 @@ export default function App() {
                   allow_decimals: formData.get('allow_decimals') === 'on' ? 1 : 0,
                   cost_usd: parseFloat(formData.get('cost_usd')) || 0,
                   price_usd: parseFloat(formData.get('price_usd')) || 0,
+                  price_cashea: formData.get('price_cashea') ? parseFloat(formData.get('price_cashea')) : null,
                   stock: parseFloat(formData.get('stock')) || 0,
                   min_stock: parseFloat(formData.get('min_stock')) || 5,
                   synonyms: formData.get('synonyms') || '',
@@ -1589,7 +2027,7 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="font-semibold text-gray-700 block mb-1">Costo Compra ($ USD)</label>
                   <input
@@ -1601,8 +2039,8 @@ export default function App() {
                   />
                 </div>
                 <div>
-                  <label className="font-semibold text-[#4f46e5] block mb-1">
-                    Precio Venta USD (Tasa Tienda) *
+                  <label className="font-semibold text-[#00a884] block mb-1">
+                    Precio Tienda USD *
                   </label>
                   <input
                     type="number"
@@ -1610,7 +2048,21 @@ export default function App() {
                     name="price_usd"
                     defaultValue={editingProduct?.price_usd ?? 1}
                     required
-                    className="w-full p-2 bg-white border border-indigo-300 rounded-lg text-gray-900 font-mono font-bold"
+                    className="w-full p-2 bg-white border border-emerald-300 rounded-lg text-gray-900 font-mono font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="font-semibold text-purple-700 block mb-1 flex items-center justify-between">
+                    <span>Precio Cashea ($)</span>
+                    <span className="text-[10px] text-purple-400 font-normal">Opcional</span>
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    name="price_cashea"
+                    defaultValue={editingProduct?.price_cashea ?? ''}
+                    placeholder={`Auto (+${settings?.cashea_percent || 15}%)`}
+                    className="w-full p-2 bg-purple-50/50 border border-purple-200 rounded-lg text-purple-900 font-mono font-bold placeholder:text-gray-400 placeholder:font-normal"
                   />
                 </div>
               </div>
