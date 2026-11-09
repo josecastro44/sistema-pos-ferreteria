@@ -319,7 +319,7 @@ if (!isNativeSQLite) {
           }
 
           if (cleanSql.includes('INSERT INTO products')) {
-            const [code, name, category, unit, allow_decimals, cost_usd, price_usd, stock, min_stock, synonyms, image_url] = params;
+            const [code, name, category, unit, allow_decimals, cost_usd, price_usd, price_cashea, stock, min_stock, synonyms, image_url] = params;
             const newProd = {
               id: nextProductId++,
               code,
@@ -329,6 +329,7 @@ if (!isNativeSQLite) {
               allow_decimals: allow_decimals ? 1 : 0,
               cost_usd: parseFloat(cost_usd) || 0,
               price_usd: parseFloat(price_usd) || 0,
+              price_cashea: price_cashea !== undefined && price_cashea !== null ? parseFloat(price_cashea) : 0,
               stock: parseFloat(stock) || 0,
               min_stock: parseFloat(min_stock) || 5,
               synonyms: synonyms || '',
@@ -340,7 +341,7 @@ if (!isNativeSQLite) {
           }
 
           if (cleanSql.includes('UPDATE products SET code = COALESCE')) {
-            const [code, name, category, unit, allow_decimals, cost_usd, price_usd, stock, min_stock, synonyms, image_url, id] = params;
+            const [code, name, category, unit, allow_decimals, cost_usd, price_usd, price_cashea, stock, min_stock, synonyms, image_url, id] = params;
             const prod = productsState.find(p => p.id === parseInt(id));
             if (prod) {
               if (code) prod.code = code;
@@ -350,6 +351,7 @@ if (!isNativeSQLite) {
               if (allow_decimals !== null && allow_decimals !== undefined) prod.allow_decimals = allow_decimals ? 1 : 0;
               if (cost_usd !== null && cost_usd !== undefined) prod.cost_usd = parseFloat(cost_usd);
               if (price_usd !== null && price_usd !== undefined) prod.price_usd = parseFloat(price_usd);
+              if (price_cashea !== null && price_cashea !== undefined) prod.price_cashea = parseFloat(price_cashea);
               if (stock !== null && stock !== undefined) prod.stock = parseFloat(stock);
               if (min_stock !== null && min_stock !== undefined) prod.min_stock = parseFloat(min_stock);
               if (synonyms !== null && synonyms !== undefined) prod.synonyms = synonyms;
