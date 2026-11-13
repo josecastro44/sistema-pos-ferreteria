@@ -153,7 +153,14 @@ if (!isNativeSQLite) {
             return { total: usersState.length };
           }
           if (cleanSql.includes('SELECT id FROM sales ORDER BY id DESC LIMIT 1')) {
-            return salesState.length ? { id: salesState[salesState.length - 1].id } : null;
+            if (!salesState.length) return null;
+            const maxId = Math.max(...salesState.map(s => s.id));
+            return { id: maxId };
+          }
+          if (cleanSql.includes('SELECT id FROM quotes ORDER BY id DESC LIMIT 1')) {
+            if (!quotesState.length) return null;
+            const maxId = Math.max(...quotesState.map(q => q.id));
+            return { id: maxId };
           }
           if (cleanSql.includes('SELECT * FROM products WHERE id = ?')) {
             return productsState.find(p => p.id === parseInt(params[0])) || null;
