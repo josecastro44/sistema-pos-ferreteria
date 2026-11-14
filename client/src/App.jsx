@@ -670,6 +670,8 @@ export default function App() {
           removeFromCart={removeFromCart}
           clearCart={() => setCart([])}
           onOpenCheckout={openCheckout}
+          fetchCustomers={fetchCustomers}
+          showToast={showToast}
           onGenerateQuote={() => {
             if (cart.length === 0) {
               showToast('El carrito está vacío para cotizar', 'error');

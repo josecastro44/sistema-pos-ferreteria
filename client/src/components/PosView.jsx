@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   LayoutGrid,
   List,
@@ -9,7 +9,11 @@ import {
   ShoppingCart,
   Box,
   FileText,
-  Sparkles
+  Sparkles,
+  X,
+  UserPlus,
+  ArrowRight,
+  CreditCard
 } from 'lucide-react';
 
 export default function PosView({
@@ -32,8 +36,44 @@ export default function PosView({
   removeFromCart,
   clearCart,
   onOpenCheckout,
-  onGenerateQuote
+  onGenerateQuote,
+  fetchCustomers,
+  showToast
 }) {
+  const [isCartDrawerOpen, setIsCartDrawerOpen] = useState(false);
+  const [isNewCustomerModalOpen, setIsNewCustomerModalOpen] = useState(false);
+  const [newCustomerForm, setNewCustomerForm] = useState({ name: '', id_card: '', phone: '' });
+  const [isCreatingCustomer, setIsCreatingCustomer] = useState(false);
+
+  const handleCreateCustomer = async (e) => {
+    e.preventDefault();
+    if (!newCustomerForm.name.trim() || !newCustomerForm.id_card.trim()) {
+      if (showToast) showToast('Nombre y Cédula/RIF son obligatorios', 'error');
+      return;
+    }
+    setIsCreatingCustomer(true);
+    try {
+      const res = await fetch('/api/customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newCustomerForm)
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Error al guardar cliente');
+      }
+      if (fetchCustomers) await fetchCustomers();
+      setCustomerName(newCustomerForm.name);
+      setIsNewCustomerModalOpen(false);
+      setNewCustomerForm({ name: '', id_card: '', phone: '' });
+      if (showToast) showToast(`Cliente ${newCustomerForm.name} registrado con éxito`);
+    } catch (err) {
+      if (showToast) showToast(err.message, 'error');
+    } finally {
+      setIsCreatingCustomer(false);
+    }
+  };
+
   const getProductImage = (prod) => {
     if (prod.image_url && prod.image_url.trim()) return prod.image_url;
     return 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=300&auto=format&fit=crop&q=80';
@@ -312,9 +352,9 @@ export default function PosView({
         </div>
 
         {/* ========================================================= */}
-        {/* CART CONTAINER (COMPACTO Y BIEN PROPORCIONADO)            */}
+        {/* CART CONTAINER (DESKTOP ONLY - COMPACTO Y PROPORCIONADO)  */}
         {/* ========================================================= */}
-        <div className="lg:col-span-4 xl:col-span-4 2xl:col-span-3 bg-white rounded-2xl border border-gray-100 shadow-xs p-3.5 sm:p-4 space-y-3 sticky top-18">
+        <div className="hidden lg:block lg:col-span-4 xl:col-span-4 2xl:col-span-3 bg-white rounded-2xl border border-gray-100 shadow-xs p-3.5 sm:p-4 space-y-3 sticky top-18">
           {/* Header */}
           <div className="flex items-center justify-between pb-2.5 border-b border-gray-100">
             <div className="flex items-center gap-2">
@@ -490,6 +530,316 @@ export default function PosView({
           </div>
         </div>
       </div>
+
+      {/* ========================================================= */}
+      {/* FLOATING CART BAR (MOBILE/TABLET - EXACT TO IMAGE 1)       */}
+      {/* ========================================================= */}
+      {cart.length > 0 && (
+        <div className="fixed bottom-3 inset-x-3 sm:bottom-4 sm:right-6 sm:left-auto sm:w-[420px] z-40 lg:hidden">
+          <div
+            onClick={() => setIsCartDrawerOpen(true)}
+            className="bg-[#0f172a] hover:bg-[#1e293b] text-white rounded-2xl p-2.5 sm:p-3 shadow-2xl flex items-center justify-between border border-slate-800 transition-all cursor-pointer active:scale-[0.99] select-none"
+          >
+            {/* Left: Cart Icon with Badge & Prices */}
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <div className="w-10 h-10 rounded-full bg-[#00a884] flex items-center justify-center text-white shadow-md">
+                  <ShoppingCart className="w-5 h-5" />
+                </div>
+                <span className="absolute -top-1 -right-1 bg-white text-gray-900 font-black text-[11px] w-5 h-5 rounded-full flex items-center justify-center shadow-xs border border-gray-200">
+                  {cart.reduce((sum, item) => sum + item.quantity, 0)}
+                </span>
+              </div>
+              <div className="text-left">
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-base sm:text-lg font-black font-mono text-white tracking-tight">
+                    ${cartTotals.total_usd_tienda.toFixed(2)}
+                  </span>
+                  <span className="text-xs font-bold font-mono text-[#00a884]">
+                    (Bs. {Math.round(cartTotals.total_bs).toLocaleString('es-VE')})
+                  </span>
+                </div>
+                <p className="text-[11px] text-gray-300 font-medium">
+                  Toca para revisar cuenta
+                </p>
+              </div>
+            </div>
+
+            {/* Right: Cobrar Button */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenCheckout();
+              }}
+              className="bg-[#00a884] hover:bg-[#008f6f] active:scale-95 text-white font-bold px-4 py-2.5 rounded-xl text-xs sm:text-sm flex items-center gap-1.5 shadow-md transition-all cursor-pointer shrink-0"
+            >
+              <span>Cobrar</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* DRAWER / BOTTOM SHEET: CARRITO DE DESPACHO (IMAGE 3)      */}
+      {/* ========================================================= */}
+      {isCartDrawerOpen && cart.length > 0 && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
+            onClick={() => setIsCartDrawerOpen(false)}
+          />
+
+          {/* Bottom Sheet Box */}
+          <div className="relative bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl z-10 flex flex-col max-h-[88vh] overflow-hidden animate-in slide-in-from-bottom duration-200">
+            {/* Header */}
+            <div className="p-4 sm:p-5 border-b border-gray-100 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-[#00a884] flex items-center justify-center">
+                  <ShoppingCart className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-gray-900 leading-tight">
+                    Carrito de Despacho
+                  </h3>
+                  <p className="text-xs text-gray-400 font-medium">
+                    {cart.reduce((sum, item) => sum + item.quantity, 0)} {cart.length === 1 ? 'producto en lista' : 'productos en lista'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    clearCart();
+                    setIsCartDrawerOpen(false);
+                  }}
+                  className="text-xs font-bold text-rose-500 hover:text-rose-600 px-2 py-1 transition-colors cursor-pointer"
+                >
+                  Vaciar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsCartDrawerOpen(false)}
+                  className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center transition-colors cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Customer Selector: CLIENTE / TALLER */}
+            <div className="px-4 sm:px-5 py-3 border-b border-gray-100 bg-gray-50/60">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[10px] font-black uppercase tracking-wider text-gray-500">
+                  CLIENTE / TALLER:
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setIsNewCustomerModalOpen(true)}
+                  className="text-xs font-bold text-[#00a884] hover:text-[#008f6f] flex items-center gap-1 cursor-pointer"
+                >
+                  <UserPlus className="w-3.5 h-3.5" />
+                  <span>+ Nuevo</span>
+                </button>
+              </div>
+              <select
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#00a884]/20 focus:border-[#00a884] cursor-pointer shadow-2xs"
+              >
+                <option value="Cliente Mostrador">Cliente Mostrador (Venta Rápida)</option>
+                {customers.map(c => (
+                  <option key={c.id} value={c.name}>
+                    {c.name} {c.id_card ? `(${c.id_card})` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Scrollable Items List */}
+            <div className="p-4 sm:p-5 overflow-y-auto space-y-2.5 flex-1">
+              {cart.map(item => (
+                <div
+                  key={item.product_id}
+                  className="bg-white border border-gray-100 rounded-xl p-3 shadow-xs flex items-center justify-between gap-2"
+                >
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-bold text-xs text-gray-900 truncate">{item.name}</h4>
+                    <div className="text-[11px] text-gray-400 font-mono mt-0.5">
+                      {item.code || 'ART'} • ${item.price_usd_tienda.toFixed(2)} c/u
+                    </div>
+                  </div>
+
+                  {/* Stepper [-] qty [+] */}
+                  <div className="flex items-center gap-1 bg-gray-50 border border-gray-200/80 rounded-lg p-0.5">
+                    <button
+                      type="button"
+                      onClick={() => updateCartQuantity(item.product_id, -1)}
+                      className="w-6 h-6 rounded-md bg-white text-gray-600 hover:text-gray-900 flex items-center justify-center text-xs shadow-xs transition-colors cursor-pointer"
+                    >
+                      <Minus className="w-3 h-3" />
+                    </button>
+                    <span className="w-6 text-center font-mono font-bold text-xs text-gray-900">
+                      {item.quantity}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => updateCartQuantity(item.product_id, 1)}
+                      className="w-6 h-6 rounded-md bg-white text-gray-600 hover:text-gray-900 flex items-center justify-center text-xs shadow-xs transition-colors cursor-pointer"
+                    >
+                      <Plus className="w-3 h-3" />
+                    </button>
+                  </div>
+
+                  {/* Delete Icon */}
+                  <button
+                    type="button"
+                    onClick={() => removeFromCart(item.product_id)}
+                    className="p-1.5 text-gray-400 hover:text-rose-600 transition-colors cursor-pointer"
+                    title="Eliminar del carrito"
+                  >
+                    <Trash2 className="w-4 h-4 text-rose-400 hover:text-rose-600" />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* Bottom Totals & Action */}
+            <div className="p-4 sm:p-5 border-t border-gray-100 bg-white space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-gray-500 font-medium text-xs">Total en Dólares:</span>
+                <span className="font-black font-mono text-gray-900 text-lg">
+                  ${cartTotals.total_usd_tienda.toFixed(2)}
+                </span>
+              </div>
+
+              <div className="bg-emerald-50/80 border border-emerald-100 rounded-xl p-3 flex items-center justify-between">
+                <span className="text-[#00a884] font-bold text-xs">Total en Bolívares:</span>
+                <span className="font-black font-mono text-[#00a884] text-base">
+                  Bs. {cartTotals.total_bs.toLocaleString('es-VE', { minimumFractionDigits: 2 })}
+                </span>
+              </div>
+
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCartDrawerOpen(false);
+                    onGenerateQuote();
+                  }}
+                  className="px-3.5 py-3 rounded-xl border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs transition-colors cursor-pointer flex items-center gap-1.5"
+                  title="Generar cotización"
+                >
+                  <FileText className="w-4 h-4" />
+                  <span>Presupuesto</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCartDrawerOpen(false);
+                    onOpenCheckout();
+                  }}
+                  className="flex-1 bg-[#00a884] hover:bg-[#008f6f] active:scale-98 text-white font-bold py-3.5 px-4 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 text-xs sm:text-sm cursor-pointer"
+                >
+                  <CreditCard className="w-4 h-4" />
+                  <span>💳 Cobrar e Imprimir Factura</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* QUICK NEW CUSTOMER MODAL                                   */}
+      {/* ========================================================= */}
+      {isNewCustomerModalOpen && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4">
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs"
+            onClick={() => setIsNewCustomerModalOpen(false)}
+          />
+          <div className="relative bg-white w-full max-w-sm rounded-2xl shadow-2xl z-10 p-4 sm:p-5 border border-gray-100">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-3">
+              <h3 className="font-bold text-sm text-gray-900 flex items-center gap-2">
+                <UserPlus className="w-4 h-4 text-[#00a884]" />
+                <span>Nuevo Cliente / Taller</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsNewCustomerModalOpen(false)}
+                className="w-7 h-7 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateCustomer} className="space-y-3">
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-1">
+                  Nombre o Razón Social *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newCustomerForm.name}
+                  onChange={(e) => setNewCustomerForm({ ...newCustomerForm, name: e.target.value })}
+                  placeholder="Ej: Inversiones Los Andes / Taller Juan"
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#00a884]/20 focus:border-[#00a884]"
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-1">
+                  Cédula o RIF *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newCustomerForm.id_card}
+                  onChange={(e) => setNewCustomerForm({ ...newCustomerForm, id_card: e.target.value })}
+                  placeholder="Ej: V-12345678 o J-123456789"
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#00a884]/20 focus:border-[#00a884]"
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-1">
+                  Teléfono / WhatsApp
+                </label>
+                <input
+                  type="text"
+                  value={newCustomerForm.phone}
+                  onChange={(e) => setNewCustomerForm({ ...newCustomerForm, phone: e.target.value })}
+                  placeholder="Ej: 0414-1234567"
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#00a884]/20 focus:border-[#00a884]"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsNewCustomerModalOpen(false)}
+                  className="flex-1 py-2 rounded-xl border border-gray-200 text-gray-600 text-xs font-semibold hover:bg-gray-50 cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isCreatingCustomer}
+                  className="flex-1 py-2 rounded-xl bg-[#00a884] hover:bg-[#008f6f] text-white text-xs font-bold transition-all shadow-xs cursor-pointer disabled:opacity-50"
+                >
+                  {isCreatingCustomer ? 'Guardando...' : 'Guardar Cliente'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
