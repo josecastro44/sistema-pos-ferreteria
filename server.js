@@ -1059,6 +1059,17 @@ app.post('/api/quotes/:id/convert', (req, res) => {
   }
 });
 
+app.delete('/api/quotes/:id', (req, res) => {
+  try {
+    const q = db.prepare('SELECT * FROM quotes WHERE id = ?').get(req.params.id);
+    if (!q) return res.status(404).json({ error: 'Presupuesto no encontrado' });
+    db.prepare('DELETE FROM quotes WHERE id = ?').run(req.params.id);
+    res.json({ success: true, message: 'Presupuesto eliminado con éxito' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ==========================================
 // 9. CASH CLOSINGS (Cierres de Caja Diarios)
 // ==========================================

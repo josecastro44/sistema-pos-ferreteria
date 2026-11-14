@@ -553,6 +553,12 @@ if (!isNativeSQLite) {
             return { changes: 0 };
           }
 
+          if (cleanSql.includes('DELETE FROM quotes WHERE id = ?')) {
+            const before = quotesState.length;
+            quotesState = quotesState.filter(q => q.id !== parseInt(params[0]));
+            return { changes: before - quotesState.length };
+          }
+
           if (cleanSql.includes('INSERT INTO credit_abonos')) {
             const [sale_id, amount_usd, amount_bs, payment_method, cashier_name, notes] = params;
             const newAbono = {

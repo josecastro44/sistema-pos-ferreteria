@@ -7,6 +7,7 @@ import FinancesView from './components/FinancesView';
 import UsersView from './components/UsersView';
 import CreditsView from './components/CreditsView';
 import QuotesView from './components/QuotesView';
+import { generateQuotePdf } from './utils/quotePdfGenerator';
 import {
   Plus,
   Edit,
@@ -563,12 +564,18 @@ export default function App() {
         throw new Error(errData.error || 'Error al generar presupuesto');
       }
 
+      const createdQuote = await res.json();
       setIsQuoteModalOpen(false);
       setCart([]);
       setQuoteCustomerPhone('');
       setQuoteNotes('');
       showToast('¡Presupuesto generado con éxito!');
       setActiveTab('quotes');
+
+      // Descargar PDF automáticamente
+      setTimeout(() => {
+        generateQuotePdf(createdQuote, settings, 'download');
+      }, 250);
     } catch (err) {
       showToast(err.message, 'error');
     } finally {
@@ -1017,6 +1024,9 @@ export default function App() {
       {activeTab === 'quotes' && (
         <QuotesView
           settings={settings}
+          products={products}
+          categories={categories}
+          customers={customers}
           onLoadQuoteToCart={handleLoadQuoteToCart}
           showToast={showToast}
         />
