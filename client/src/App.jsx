@@ -116,7 +116,17 @@ export default function App() {
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [productImagePreview, setProductImagePreview] = useState('');
+  const [modalPriceUsd, setModalPriceUsd] = useState('');
+  const [modalPriceCashea, setModalPriceCashea] = useState('');
   const [deleteConfirmModal, setDeleteConfirmModal] = useState(null);
+
+  const handleOpenProductModal = (prod = null) => {
+    setEditingProduct(prod);
+    setProductImagePreview(prod ? prod.image_url || '' : '');
+    setModalPriceUsd(prod ? (prod.price_usd !== undefined ? prod.price_usd : '') : '');
+    setModalPriceCashea(prod ? (prod.price_cashea !== undefined ? prod.price_cashea : '') : '');
+    setIsProductModalOpen(true);
+  };
   const [stockAdjustModal, setStockAdjustModal] = useState(null);
   const [stockAdjustQty, setStockAdjustQty] = useState('');
 
@@ -629,11 +639,7 @@ export default function App() {
         setTempRates({ tasa_interna: settings.tasa_interna, tasa_bcv: settings.tasa_bcv });
         setIsRatesModalOpen(true);
       }}
-      onOpenNewProductModal={() => {
-        setEditingProduct(null);
-        setProductImagePreview('');
-        setIsProductModalOpen(true);
-      }}
+      onOpenNewProductModal={() => handleOpenProductModal(null)}
       currentUser={currentUser}
       onSwitchUser={() => {
         setSwitchUserPinInput('');
@@ -780,16 +786,14 @@ export default function App() {
         <EditProductView
           products={products}
           categories={categories}
-          onEditProduct={(prod) => {
-            setEditingProduct(prod);
-            setProductImagePreview(prod.image_url || '');
-            setIsProductModalOpen(true);
-          }}
+          onEditProduct={(prod) => handleOpenProductModal(prod)}
           onAdjustStock={(prod) => {
             setStockAdjustModal(prod);
             setStockAdjustQty('');
           }}
           settings={settings}
+          fetchProducts={fetchProducts}
+          showToast={showToast}
         />
       )}
 
@@ -820,11 +824,7 @@ export default function App() {
               </div>
 
               <button
-                onClick={() => {
-                  setEditingProduct(null);
-                  setProductImagePreview('');
-                  setIsProductModalOpen(true);
-                }}
+                onClick={() => handleOpenProductModal(null)}
                 className="bg-[#4f46e5] hover:bg-[#4338ca] text-white font-semibold px-4 py-2 rounded-xl text-xs flex items-center gap-2 shadow-xs transition-all"
               >
                 <Plus className="w-4 h-4" />
@@ -907,11 +907,7 @@ export default function App() {
                           <Layers className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => {
-                            setEditingProduct(p);
-                            setProductImagePreview(p.image_url || '');
-                            setIsProductModalOpen(true);
-                          }}
+                          onClick={() => handleOpenProductModal(p)}
                           className="p-1.5 text-gray-400 hover:text-[#4f46e5] hover:bg-indigo-50 rounded-lg transition-colors"
                           title="Editar"
                         >
@@ -1687,6 +1683,41 @@ export default function App() {
                         required
                         className="w-full p-2.5 bg-white border border-gray-200 rounded-xl font-mono text-xs font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
                       />
+                      <div className="flex gap-1 mt-1.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const d = new Date();
+                            d.setDate(d.getDate() + 7);
+                            setCreditDueDate(d.toISOString().split('T')[0]);
+                          }}
+                          className="px-2 py-0.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 text-[10px] font-bold cursor-pointer transition-colors"
+                        >
+                          +7 días
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const d = new Date();
+                            d.setDate(d.getDate() + 15);
+                            setCreditDueDate(d.toISOString().split('T')[0]);
+                          }}
+                          className="px-2 py-0.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[10px] font-bold cursor-pointer transition-colors"
+                        >
+                          +15 días
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const d = new Date();
+                            d.setDate(d.getDate() + 30);
+                            setCreditDueDate(d.toISOString().split('T')[0]);
+                          }}
+                          className="px-2 py-0.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 text-[10px] font-bold cursor-pointer transition-colors"
+                        >
+                          +30 días
+                        </button>
+                      </div>
                     </div>
                     <div>
                       <label className="text-xs font-bold text-gray-700 block mb-1">
@@ -2040,7 +2071,10 @@ export default function App() {
                   stock: parseFloat(formData.get('stock')) || 0,
                   min_stock: parseFloat(formData.get('min_stock')) || 5,
                   synonyms: formData.get('synonyms') || '',
-                  image_url: productImagePreview || ''
+                  image_url: productImagePreview || '',
+                  is_active: formData.get('is_active') === 'on' ? 1 : 0,
+                  provider_code: (formData.get('provider_code') || '').trim(),
+                  provider_notes: (formData.get('provider_notes') || '').trim()
                 };
 
                 const url = editingProduct ? `${API_BASE}/products/${editingProduct.id}` : `${API_BASE}/products`;
@@ -2062,6 +2096,23 @@ export default function App() {
               }}
               className="space-y-3.5 text-xs"
             >
+              {/* Toggle Activo / Inactivo en POS */}
+              <div className="flex items-center justify-between p-3 rounded-xl bg-gray-50 border border-gray-200">
+                <div>
+                  <div className="font-bold text-gray-900 text-xs">Visibilidad en Punto de Venta (POS)</div>
+                  <div className="text-[10px] text-gray-500">Si está inactivo, no aparecerá en caja para evitar ventas por error</div>
+                </div>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="is_active"
+                    defaultChecked={editingProduct ? editingProduct.is_active !== 0 : true}
+                    className="w-4 h-4 text-[#00a884] rounded border-gray-300"
+                  />
+                  <span className="text-xs font-bold text-gray-800">Activo</span>
+                </label>
+              </div>
+
               <div>
                 <label className="font-semibold text-gray-700 block mb-1">
                   URL de la Foto del Producto
@@ -2148,6 +2199,7 @@ export default function App() {
                 </div>
               </div>
 
+              {/* Precios: Costo, Tienda USD y Cashea Automático */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="font-semibold text-gray-700 block mb-1">Costo Compra ($ USD)</label>
@@ -2167,23 +2219,62 @@ export default function App() {
                     type="number"
                     step="0.01"
                     name="price_usd"
-                    defaultValue={editingProduct?.price_usd ?? 1}
+                    value={modalPriceUsd}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setModalPriceUsd(val);
+                      const num = parseFloat(val);
+                      if (!isNaN(num) && num > 0) {
+                        const casheaCalc = (num * (1 + (settings?.cashea_percent || 15) / 100)).toFixed(2);
+                        setModalPriceCashea(casheaCalc);
+                      } else {
+                        setModalPriceCashea('');
+                      }
+                    }}
                     required
+                    placeholder="1.00"
                     className="w-full p-2 bg-white border border-emerald-300 rounded-lg text-gray-900 font-mono font-bold"
                   />
                 </div>
                 <div>
                   <label className="font-semibold text-purple-700 block mb-1 flex items-center justify-between">
                     <span>Precio Cashea ($)</span>
-                    <span className="text-[10px] text-purple-400 font-normal">Opcional</span>
+                    <span className="text-[10px] text-purple-400 font-bold">Auto (+{settings?.cashea_percent || 15}%)</span>
                   </label>
                   <input
                     type="number"
                     step="0.01"
                     name="price_cashea"
-                    defaultValue={editingProduct?.price_cashea ?? ''}
+                    value={modalPriceCashea}
+                    onChange={(e) => setModalPriceCashea(e.target.value)}
                     placeholder={`Auto (+${settings?.cashea_percent || 15}%)`}
                     className="w-full p-2 bg-purple-50/50 border border-purple-200 rounded-lg text-purple-900 font-mono font-bold placeholder:text-gray-400 placeholder:font-normal"
+                  />
+                </div>
+              </div>
+
+              {/* Proveedor y Notas Internas */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-semibold text-gray-700 block mb-1">
+                    Código de Proveedor / Catálogo
+                  </label>
+                  <input
+                    name="provider_code"
+                    defaultValue={editingProduct?.provider_code || ''}
+                    placeholder="Ej: CAT-9912"
+                    className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="font-semibold text-gray-700 block mb-1">
+                    Notas de Reposición / Proveedor
+                  </label>
+                  <input
+                    name="provider_notes"
+                    defaultValue={editingProduct?.provider_notes || ''}
+                    placeholder="Ej: Distribuidora Oriente, pedir los martes"
+                    className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900"
                   />
                 </div>
               </div>
@@ -2227,7 +2318,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setIsProductModalOpen(false)}
-                  className="flex-1 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl"
+                  className="flex-1 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl cursor-pointer"
                 >
                   Cancelar
                 </button>

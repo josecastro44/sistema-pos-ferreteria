@@ -44,12 +44,13 @@ export default function QuotesView({
   const [deleteConfirm, setDeleteConfirm] = useState(null);
 
   // New Quote Creator State
+  // currencyMode: 'divisas' | 'bolivares' | 'bcv' | 'cashea'
+  const [currencyMode, setCurrencyMode] = useState('bolivares');
   const [quoteItems, setQuoteItems] = useState([]);
   const [quoteCustomerName, setQuoteCustomerName] = useState('Cliente Mostrador');
   const [quoteCustomerCi, setQuoteCustomerCi] = useState('');
   const [quoteCustomerPhone, setQuoteCustomerPhone] = useState('');
-  const [quoteNotes, setQuoteNotes] = useState('Válido por 3 días continuos');
-  const [isCasheaQuote, setIsCasheaQuote] = useState(false);
+  const [quoteNotes, setQuoteNotes] = useState('');
   const [productSearch, setProductSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Todos');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -78,10 +79,13 @@ export default function QuotesView({
   };
 
   const tasaInterna = Number(settings?.tasa_interna || 960);
+  const tasaBcv = Number(settings?.tasa_bcv || 883.40);
   const casheaPercent = Number(settings?.cashea_percent || 15);
 
-  // Filter products for the quote builder
-  const filteredProducts = products.filter(p => {
+  // Filter products for the quote builder (only active products)
+  const activeProducts = products.filter(p => p.is_active !== 0);
+
+  const filteredProducts = activeProducts.filter(p => {
     const term = productSearch.toLowerCase().trim();
     const matchesSearch = !term ||
       p.name.toLowerCase().includes(term) ||
@@ -92,12 +96,43 @@ export default function QuotesView({
   });
 
   // Unique categories list
-  const allCategories = ['Todos', ...new Set(products.map(p => p.category).filter(Boolean))];
+  const allCategories = ['Todos', ...new Set(activeProducts.map(p => p.category).filter(Boolean))];
+
+  // Helper to get unit price and label based on active mode
+  const getProductPriceForMode = (prod, mode = currencyMode) => {
+    if (mode === 'divisas') {
+      return {
+        unitPriceUsd: Number(prod.price_usd_tienda || 0),
+        unitPriceBs: 0,
+        displayLabel: `$${Number(prod.price_usd_tienda || 0).toFixed(2)}`
+      };
+    }
+    if (mode === 'bcv') {
+      const priceBcv = prod.price_usd_bcv ? Number(prod.price_usd_bcv) : (Number(prod.price_bs || 0) / tasaBcv);
+      return {
+        unitPriceUsd: priceBcv,
+        unitPriceBs: Number(prod.price_bs || 0),
+        displayLabel: `$${priceBcv.toFixed(2)} BCV`
+      };
+    }
+    if (mode === 'cashea') {
+      return {
+        unitPriceUsd: Number(prod.price_cashea || 0),
+        unitPriceBs: Number(prod.price_cashea_bs || (Number(prod.price_cashea || 0) * tasaBcv)),
+        displayLabel: `$${Number(prod.price_cashea || 0).toFixed(2)} Cashea`
+      };
+    }
+    // Default 'bolivares'
+    return {
+      unitPriceUsd: Number(prod.price_usd_tienda || 0),
+      unitPriceBs: Number(prod.price_bs || 0),
+      displayLabel: `Bs. ${Number(prod.price_bs || 0).toLocaleString('es-VE')}`
+    };
+  };
 
   // Helper to add product to quote
   const handleAddProductToQuote = (prod) => {
-    const unitPriceUsd = isCasheaQuote ? prod.price_cashea : prod.price_usd_tienda;
-    const unitPriceBs = isCasheaQuote ? prod.price_cashea_bs : prod.price_bs;
+    const pricing = getProductPriceForMode(prod, currencyMode);
 
     setQuoteItems(prev => {
       const exists = prev.find(item => item.product_id === prod.id);
@@ -116,11 +151,28 @@ export default function QuotesView({
           product_name: prod.name,
           unit: prod.unit || 'und',
           quantity: 1,
-          price_usd: unitPriceUsd,
-          price_bs: unitPriceBs
+          price_usd: pricing.unitPriceUsd,
+          price_bs: pricing.unitPriceBs
         }
       ];
     });
+  };
+
+  // Switch currency mode and recalculate existing items
+  const handleSwitchCurrencyMode = (newMode) => {
+    setCurrencyMode(newMode);
+    setQuoteItems(prev =>
+      prev.map(item => {
+        const prod = products.find(p => p.id === item.product_id);
+        if (!prod) return item;
+        const pricing = getProductPriceForMode(prod, newMode);
+        return {
+          ...item,
+          price_usd: pricing.unitPriceUsd,
+          price_bs: pricing.unitPriceBs
+        };
+      })
+    );
   };
 
   // Stepper quantity update
@@ -144,10 +196,12 @@ export default function QuotesView({
   };
 
   // Calculate quote totals
-  const quoteTotalUsd = quoteItems.reduce((acc, it) => {
-    return acc + (it.price_usd * it.quantity);
-  }, 0);
-  const quoteTotalBs = Math.round(quoteTotalUsd * tasaInterna * 100) / 100;
+  const quoteTotalUsd = quoteItems.reduce((acc, it) => acc + (it.price_usd * it.quantity), 0);
+  const quoteTotalBs = currencyMode === 'divisas'
+    ? 0
+    : (currencyMode === 'bcv' || currencyMode === 'cashea'
+      ? Math.round(quoteTotalUsd * tasaBcv * 100) / 100
+      : Math.round(quoteTotalUsd * tasaInterna * 100) / 100);
 
   // Save Quote & Open PDF / Proforma Preview
   const handleSaveAndGeneratePdf = async () => {
@@ -158,12 +212,21 @@ export default function QuotesView({
 
     setIsSubmitting(true);
     try {
+      const defaultNote = currencyMode === 'bolivares'
+        ? 'Presupuesto válido únicamente por 24 horas'
+        : currencyMode === 'divisas'
+        ? 'Presupuesto – Método de pago: Solo válido en Divisas (Efectivo / Zelle / Binance)'
+        : currencyMode === 'bcv'
+        ? 'Cotización a Tasa Oficial BCV - Válido por 24 horas'
+        : 'Cotización Modalidad Cashea (+15%) a Tasa Oficial BCV';
+
       const payload = {
         customer_name: quoteCustomerName || 'Cliente Mostrador',
         customer_phone: quoteCustomerPhone || '',
         customer_ci: quoteCustomerCi || '',
-        notes: quoteNotes || '',
-        is_cashea: isCasheaQuote,
+        notes: quoteNotes || defaultNote,
+        currency_mode: currencyMode,
+        is_cashea: currencyMode === 'cashea',
         items: quoteItems.map(it => ({
           product_id: it.product_id,
           quantity: it.quantity
@@ -192,17 +255,20 @@ export default function QuotesView({
       setQuoteCustomerName('Cliente Mostrador');
       setQuoteCustomerCi('');
       setQuoteCustomerPhone('');
+      setQuoteNotes('');
 
       // Open Quote Preview with generated PDF option
-      setSelectedQuote({
+      const fullQuoteData = {
         ...createdQuote,
+        currency_mode: currencyMode,
         customer_ci: quoteCustomerCi,
         customer_phone: quoteCustomerPhone
-      });
+      };
+      setSelectedQuote(fullQuoteData);
 
       // Automatically trigger PDF download
       setTimeout(() => {
-        generateQuotePdf(createdQuote, settings, 'download');
+        generateQuotePdf(fullQuoteData, settings, 'download');
       }, 300);
     } catch (err) {
       if (showToast) showToast(err.message, 'error');
@@ -231,7 +297,7 @@ export default function QuotesView({
     }
   };
 
-  // Share via WhatsApp
+  // Share via WhatsApp with custom mode formatting
   const handleShareWhatsApp = (quote) => {
     const rawPhone = (quote.customer_phone || '').replace(/\D/g, '');
     let phoneParam = rawPhone;
@@ -240,23 +306,77 @@ export default function QuotesView({
     }
 
     const companyName = settings?.company_name || 'Ferretería Hebert';
+    const mode = quote.currency_mode || (quote.is_cashea ? 'cashea' : 'bolivares');
+    const dateStr = new Date(quote.created_at || Date.now()).toLocaleDateString('es-VE');
     const totalUsd = Number(quote.total_usd).toFixed(2);
     const totalBs = Number(quote.total_bs).toLocaleString('es-VE', { minimumFractionDigits: 2 });
     const tasa = Number(quote.tasa_interna || tasaInterna).toFixed(2);
 
-    const itemsSummary = (quote.items || [])
-      .map(it => `• ${it.quantity}x ${it.product_name || it.name}: $${Number(it.subtotal_usd || (it.price_usd * it.quantity)).toFixed(2)}`)
-      .join('\n');
+    let text = '';
 
-    const text = `*PRESUPUESTO ${quote.quote_number}* - ${companyName}\n` +
-      `👤 *Cliente:* ${quote.customer_name}\n` +
-      `📅 *Fecha:* ${new Date(quote.created_at || Date.now()).toLocaleDateString('es-VE')}\n\n` +
-      `📋 *Productos Cotizados:*\n${itemsSummary}\n\n` +
-      `💵 *Total en Dólares:* $${totalUsd}\n` +
-      `🇻🇪 *Total en Bolívares:* Bs. ${totalBs}\n` +
-      `📊 *Tasa Ref.:* Bs. ${tasa} / $\n\n` +
-      `⚠️ *Validez:* 3 días continuos.\n` +
-      `_Gracias por su consulta._`;
+    if (mode === 'divisas') {
+      const itemsSummary = (quote.items || [])
+        .map(it => `• ${it.quantity}x ${it.product_name || it.name}: $${Number(it.subtotal_usd || (it.price_usd * it.quantity)).toFixed(2)}`)
+        .join('\n');
+
+      text = `*PRESUPUESTO EN DIVISAS ${quote.quote_number}* - ${companyName}\n` +
+        `👤 *Cliente:* ${quote.customer_name}\n` +
+        `📅 *Fecha:* ${dateStr}\n` +
+        `💵 *Método de pago:* Solo válido en Divisas (Efectivo / Zelle / Binance)\n\n` +
+        `📋 *Productos Cotizados:*\n${itemsSummary}\n\n` +
+        `💰 *TOTAL EN DÓLARES:* $${totalUsd}\n\n` +
+        `🔒 *Condición:* Precios fijos en dólares durante la vigencia del presupuesto.\n` +
+        `_Gracias por su preferencia._`;
+    } else if (mode === 'cashea') {
+      const itemsSummary = (quote.items || [])
+        .map(it => `• ${it.quantity}x ${it.product_name || it.name}: $${Number(it.subtotal_usd || (it.price_usd * it.quantity)).toFixed(2)} Cashea`)
+        .join('\n');
+
+      const inicialUsd = (Number(quote.total_usd) * 0.40).toFixed(2);
+      const cuotaUsd = ((Number(quote.total_usd) * 0.60) / 3).toFixed(2);
+      const inicialBs = Math.round(Number(inicialUsd) * tasaBcv).toLocaleString('es-VE');
+
+      text = `*COTIZACIÓN CASHEA (+${casheaPercent}%) ${quote.quote_number}* - ${companyName}\n` +
+        `👤 *Cliente:* ${quote.customer_name}\n` +
+        `📅 *Fecha:* ${dateStr}\n` +
+        `🏦 *Tasa Oficial BCV:* Bs. ${tasaBcv.toFixed(2)} / $\n\n` +
+        `📋 *Productos:*\n${itemsSummary}\n\n` +
+        `🟣 *TOTAL FINANCIADO CASHEA:* $${totalUsd}\n` +
+        `💳 *Inicial a pagar (40%):* $${inicialUsd} (Bs. ${inicialBs})\n` +
+        `🗓️ *3 Cuotas c/14 días:* $${cuotaUsd} c/u\n\n` +
+        `⚠️ *VÁLIDO ÚNICAMENTE POR 24 HORAS* a tasa oficial BCV.\n` +
+        `_Gracias por su consulta._`;
+    } else if (mode === 'bcv') {
+      const totalUsdBcv = Math.round((Number(quote.total_bs) / tasaBcv) * 100) / 100;
+      const itemsSummary = (quote.items || [])
+        .map(it => `• ${it.quantity}x ${it.product_name || it.name}: $${Number(it.subtotal_usd || (it.price_usd * it.quantity)).toFixed(2)} BCV`)
+        .join('\n');
+
+      text = `*COTIZACIÓN TASA OFICIAL BCV ${quote.quote_number}* - ${companyName}\n` +
+        `👤 *Cliente:* ${quote.customer_name}\n` +
+        `📅 *Fecha:* ${dateStr}\n` +
+        `🏦 *Tasa Oficial BCV:* Bs. ${tasaBcv.toFixed(2)} / $\n\n` +
+        `📋 *Productos:*\n${itemsSummary}\n\n` +
+        `🏦 *TOTAL USD BCV:* $${totalUsdBcv.toFixed(2)}\n` +
+        `🇻🇪 *TOTAL EN BOLÍVARES:* Bs. ${totalBs}\n\n` +
+        `⚠️ *VÁLIDO ÚNICAMENTE POR 24 HORAS* a tasa oficial BCV.\n` +
+        `_Gracias por su consulta._`;
+    } else {
+      // Bolívares
+      const itemsSummary = (quote.items || [])
+        .map(it => `• ${it.quantity}x ${it.product_name || it.name}: Bs. ${Number(it.subtotal_bs || (it.price_bs * it.quantity) || ((it.price_usd || 0) * tasaInterna * it.quantity)).toLocaleString('es-VE')}`)
+        .join('\n');
+
+      text = `*PRESUPUESTO EN BOLÍVARES ${quote.quote_number}* - ${companyName}\n` +
+        `👤 *Cliente:* ${quote.customer_name}\n` +
+        `📅 *Fecha:* ${dateStr}\n` +
+        `📊 *Tasa del día:* Bs. ${tasa} / $\n\n` +
+        `📋 *Productos Cotizados:*\n${itemsSummary}\n\n` +
+        `🇻🇪 *TOTAL EN BOLÍVARES:* Bs. ${totalBs}\n` +
+        `💵 *Equivalente Ref.:* $${totalUsd}\n\n` +
+        `🚨 *CLÁUSULA OBLIGATORIA: PRESUPUESTO VÁLIDO ÚNICAMENTE POR 24 HORAS* debido a la fluctuación cambiaria diaria.\n` +
+        `_Gracias por su consulta._`;
+    }
 
     const url = phoneParam
       ? `https://wa.me/${phoneParam}?text=${encodeURIComponent(text)}`
@@ -286,47 +406,119 @@ export default function QuotesView({
               <div>
                 <h2 className="text-xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
                   <span>Nueva Cotización / Presupuesto</span>
-                  {isCasheaQuote && (
-                    <span className="text-[10px] bg-purple-100 text-purple-800 font-black px-2 py-0.5 rounded-full">
+                  {currencyMode === 'divisas' && (
+                    <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full border border-emerald-200">
+                      💵 Solo Divisas ($)
+                    </span>
+                  )}
+                  {currencyMode === 'bolivares' && (
+                    <span className="text-[10px] bg-rose-100 text-rose-800 font-bold px-2 py-0.5 rounded-full border border-rose-200 animate-pulse">
+                      ⏳ Válido por 24 Horas
+                    </span>
+                  )}
+                  {currencyMode === 'bcv' && (
+                    <span className="text-[10px] bg-indigo-100 text-indigo-800 font-bold px-2 py-0.5 rounded-full border border-indigo-200">
+                      🏦 Tasa BCV Oficial
+                    </span>
+                  )}
+                  {currencyMode === 'cashea' && (
+                    <span className="text-[10px] bg-purple-100 text-purple-800 font-bold px-2 py-0.5 rounded-full border border-purple-200">
                       🟣 Modo Cashea (+{casheaPercent}%)
                     </span>
                   )}
                 </h2>
                 <p className="text-xs text-gray-400">
-                  Selecciona los productos del catálogo y genera un PDF profesional listo para enviar
+                  Selecciona la moneda deseada, agrega productos y genera un PDF formal o compártelo por WhatsApp
                 </p>
               </div>
             </div>
 
-            {/* Switch Cashea & Cancel */}
-            <div className="flex items-center gap-2">
-              <div className="flex items-center bg-gray-100/90 p-0.5 rounded-xl border border-gray-200/60 text-xs">
-                <button
-                  type="button"
-                  onClick={() => setIsCasheaQuote(false)}
-                  className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer ${
-                    !isCasheaQuote ? 'bg-white text-gray-900 shadow-xs' : 'text-gray-500'
-                  }`}
-                >
-                  Estándar
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsCasheaQuote(true)}
-                  className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
-                    isCasheaQuote ? 'bg-purple-600 text-white shadow-xs' : 'text-purple-700'
-                  }`}
-                >
-                  🟣 Cashea
-                </button>
-              </div>
+            {/* Cancel Button */}
+            <button
+              type="button"
+              onClick={() => setIsCreatingQuote(false)}
+              className="px-3.5 py-1.5 border border-gray-200 hover:bg-gray-50 text-gray-600 font-semibold rounded-xl text-xs transition-colors cursor-pointer"
+            >
+              Cancelar
+            </button>
+          </div>
 
+          {/* Currency Mode Selection Bar (4 Distinct Modes) */}
+          <div className="bg-white rounded-2xl border border-gray-100 p-3 sm:p-4 shadow-xs">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-2">
+              Selecciona la Moneda y Condiciones del Presupuesto:
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {/* 1. Solo Divisas ($) */}
               <button
                 type="button"
-                onClick={() => setIsCreatingQuote(false)}
-                className="px-3.5 py-1.5 border border-gray-200 hover:bg-gray-50 text-gray-600 font-semibold rounded-xl text-xs transition-colors cursor-pointer"
+                onClick={() => handleSwitchCurrencyMode('divisas')}
+                className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                  currencyMode === 'divisas'
+                    ? 'border-emerald-500 bg-emerald-50/70 text-emerald-950 ring-2 ring-emerald-500/20 shadow-xs'
+                    : 'border-gray-200 bg-white hover:bg-gray-50 text-gray-700'
+                }`}
               >
-                Cancelar
+                <div className="font-bold text-xs flex items-center gap-1.5">
+                  <span>💵 Solo Divisas ($)</span>
+                </div>
+                <div className="text-[10px] text-emerald-800 font-medium mt-1">
+                  100% en Dólares • Sin Bs. • Precios fijos
+                </div>
+              </button>
+
+              {/* 2. En Bolívares (24h) */}
+              <button
+                type="button"
+                onClick={() => handleSwitchCurrencyMode('bolivares')}
+                className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                  currencyMode === 'bolivares'
+                    ? 'border-rose-500 bg-rose-50/70 text-rose-950 ring-2 ring-rose-500/20 shadow-xs'
+                    : 'border-gray-200 bg-white hover:bg-gray-50 text-gray-700'
+                }`}
+              >
+                <div className="font-bold text-xs flex items-center gap-1.5">
+                  <span>🇻🇪 En Bolívares (Bs.)</span>
+                </div>
+                <div className="text-[10px] text-rose-800 font-bold mt-1">
+                  Tasa Tienda • Válido por 24 horas
+                </div>
+              </button>
+
+              {/* 3. Dólares a Tasa BCV */}
+              <button
+                type="button"
+                onClick={() => handleSwitchCurrencyMode('bcv')}
+                className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                  currencyMode === 'bcv'
+                    ? 'border-indigo-500 bg-indigo-50/70 text-indigo-950 ring-2 ring-indigo-500/20 shadow-xs'
+                    : 'border-gray-200 bg-white hover:bg-gray-50 text-gray-700'
+                }`}
+              >
+                <div className="font-bold text-xs flex items-center gap-1.5">
+                  <span>🏦 Dólares BCV ($)</span>
+                </div>
+                <div className="text-[10px] text-indigo-800 font-medium mt-1">
+                  Tasa Oficial BCV • Válido 24 horas
+                </div>
+              </button>
+
+              {/* 4. Modo Cashea */}
+              <button
+                type="button"
+                onClick={() => handleSwitchCurrencyMode('cashea')}
+                className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                  currencyMode === 'cashea'
+                    ? 'border-purple-500 bg-purple-50/70 text-purple-950 ring-2 ring-purple-500/20 shadow-xs'
+                    : 'border-gray-200 bg-white hover:bg-gray-50 text-gray-700'
+                }`}
+              >
+                <div className="font-bold text-xs flex items-center gap-1.5">
+                  <span>🟣 Modo Cashea (+{casheaPercent}%)</span>
+                </div>
+                <div className="text-[10px] text-purple-800 font-medium mt-1">
+                  Tasa BCV • Desglose inicial + cuotas
+                </div>
               </button>
             </div>
           </div>
@@ -372,13 +564,12 @@ export default function QuotesView({
                 {filteredProducts.length === 0 ? (
                   <div className="col-span-full py-16 text-center text-gray-400">
                     <Box className="w-10 h-10 mx-auto text-gray-300 mb-2" />
-                    <p className="text-sm font-semibold text-gray-600">No se encontraron productos</p>
+                    <p className="text-sm font-semibold text-gray-600">No se encontraron productos disponibles</p>
                     <p className="text-xs text-gray-400">Prueba con otra búsqueda o categoría</p>
                   </div>
                 ) : (
                   filteredProducts.map(prod => {
-                    const priceUsd = isCasheaQuote ? prod.price_cashea : prod.price_usd_tienda;
-                    const priceBs = isCasheaQuote ? prod.price_cashea_bs : prod.price_bs;
+                    const pricing = getProductPriceForMode(prod, currencyMode);
 
                     return (
                       <div
@@ -408,13 +599,43 @@ export default function QuotesView({
                           </h4>
                         </div>
 
-                        <div className="pt-2 border-t border-gray-100 mt-2 flex items-baseline justify-between">
-                          <span className="text-sm font-black font-mono text-gray-900">
-                            ${Number(priceUsd).toFixed(2)}
-                          </span>
-                          <span className="text-[10px] font-bold font-mono text-gray-500">
-                            Bs. {Number(priceBs).toLocaleString('es-VE', { minimumFractionDigits: 2 })}
-                          </span>
+                        {/* Price Display adapted to Mode */}
+                        <div className="pt-2 border-t border-gray-100 mt-2">
+                          {currencyMode === 'divisas' ? (
+                            <div className="flex items-baseline justify-between">
+                              <span className="text-sm font-black font-mono text-gray-900">
+                                ${pricing.unitPriceUsd.toFixed(2)}
+                              </span>
+                              <span className="text-[10px] text-emerald-700 font-bold">Divisas</span>
+                            </div>
+                          ) : currencyMode === 'bolivares' ? (
+                            <div>
+                              <div className="text-sm font-black font-mono text-gray-900">
+                                Bs. {pricing.unitPriceBs.toLocaleString('es-VE')}
+                              </div>
+                              <div className="text-[10px] text-gray-400 font-mono">
+                                Ref: ${pricing.unitPriceUsd.toFixed(2)}
+                              </div>
+                            </div>
+                          ) : currencyMode === 'bcv' ? (
+                            <div>
+                              <div className="text-sm font-black font-mono text-indigo-700">
+                                ${pricing.unitPriceUsd.toFixed(2)} BCV
+                              </div>
+                              <div className="text-[10px] text-gray-400 font-mono">
+                                Bs. {pricing.unitPriceBs.toLocaleString('es-VE')}
+                              </div>
+                            </div>
+                          ) : (
+                            <div>
+                              <div className="text-sm font-black font-mono text-purple-700">
+                                ${pricing.unitPriceUsd.toFixed(2)}
+                              </div>
+                              <div className="text-[10px] text-purple-400 font-mono">
+                                Cashea (+{casheaPercent}%)
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                     );
@@ -435,6 +656,27 @@ export default function QuotesView({
                 </div>
                 <span className="text-[10px] bg-gray-100 text-gray-700 font-semibold px-2 py-0.5 rounded-full">
                   {quoteItems.length} {quoteItems.length === 1 ? 'producto' : 'productos'}
+                </span>
+              </div>
+
+              {/* Mode Banner Indicator */}
+              <div className={`p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-between ${
+                currencyMode === 'divisas'
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                  : currencyMode === 'bolivares'
+                  ? 'bg-rose-50 border-rose-200 text-rose-900'
+                  : currencyMode === 'bcv'
+                  ? 'bg-indigo-50 border-indigo-200 text-indigo-900'
+                  : 'bg-purple-50 border-purple-200 text-purple-900'
+              }`}>
+                <span>
+                  {currencyMode === 'divisas' && '💵 Presupuesto en Divisas (Precios Fijos)'}
+                  {currencyMode === 'bolivares' && '🇻🇪 Presupuesto Válido Únicamente por 24h'}
+                  {currencyMode === 'bcv' && '🏦 Cotización Tasa Oficial BCV'}
+                  {currencyMode === 'cashea' && `🟣 Modo Cashea (+${casheaPercent}%)`}
+                </span>
+                <span className="text-[10px] opacity-80 uppercase">
+                  {currencyMode}
                 </span>
               </div>
 
@@ -488,13 +730,19 @@ export default function QuotesView({
 
                 <div>
                   <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-1">
-                    Nota o Validez
+                    Nota o Cláusula de Validez
                   </label>
                   <input
                     type="text"
                     value={quoteNotes}
                     onChange={(e) => setQuoteNotes(e.target.value)}
-                    placeholder="Ej: Válido por 3 días continuos"
+                    placeholder={
+                      currencyMode === 'bolivares'
+                        ? 'Presupuesto válido únicamente por 24 horas'
+                        : currencyMode === 'divisas'
+                        ? 'Solo válido en Divisas (Efectivo / Zelle / Binance)'
+                        : 'Válido por 24 horas a tasa oficial BCV'
+                    }
                     className="w-full px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#00a884]/20 focus:border-[#00a884]"
                   />
                 </div>
@@ -517,7 +765,13 @@ export default function QuotesView({
                       <div className="flex-1 min-w-0">
                         <div className="font-bold text-xs text-gray-900 truncate">{item.product_name}</div>
                         <div className="text-[10px] font-mono text-gray-500">
-                          ${item.price_usd.toFixed(2)} • Bs. {Math.round(item.price_usd * tasaInterna).toLocaleString('es-VE')}
+                          {currencyMode === 'divisas' ? (
+                            <span>${item.price_usd.toFixed(2)} c/u</span>
+                          ) : currencyMode === 'bolivares' ? (
+                            <span>Bs. {Math.round(item.price_usd * tasaInterna).toLocaleString('es-VE')}</span>
+                          ) : (
+                            <span>${item.price_usd.toFixed(2)} c/u</span>
+                          )}
                         </div>
                       </div>
 
@@ -564,22 +818,77 @@ export default function QuotesView({
               {/* Totals Breakdown */}
               <div className="pt-2 border-t border-gray-100 space-y-2">
                 <div className="p-3 rounded-xl bg-gray-50 border border-gray-100 space-y-1">
-                  <div className="flex justify-between items-baseline">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Total Dólares:</span>
-                    <span className="text-xl font-black font-mono text-gray-900">
-                      ${quoteTotalUsd.toFixed(2)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-gray-500 font-medium">Equivalente en Bs.:</span>
-                    <span className="font-mono font-black text-[#00a884] text-sm">
-                      Bs. {quoteTotalBs.toLocaleString('es-VE', { minimumFractionDigits: 2 })}
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-[10px] text-gray-400 pt-0.5">
-                    <span>Tasa de Cambio:</span>
-                    <span className="font-mono">Bs. {tasaInterna.toFixed(2)} / $</span>
-                  </div>
+                  {currencyMode === 'divisas' ? (
+                    <div>
+                      <div className="flex justify-between items-baseline">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Total en Dólares ($):</span>
+                        <span className="text-2xl font-black font-mono text-emerald-700">
+                          ${quoteTotalUsd.toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="text-[10px] text-emerald-800 font-semibold pt-1 border-t border-gray-200/60 mt-1">
+                        Solo válido para pagos en Divisas (Efectivo / Zelle / Binance)
+                      </div>
+                    </div>
+                  ) : currencyMode === 'bolivares' ? (
+                    <div>
+                      <div className="flex justify-between items-baseline">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-rose-600">Total en Bolívares (Bs.):</span>
+                        <span className="text-xl font-black font-mono text-rose-700">
+                          Bs. {quoteTotalBs.toLocaleString('es-VE', { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center text-xs text-gray-500 pt-0.5">
+                        <span>Ref. en Dólares:</span>
+                        <span className="font-mono font-bold text-gray-800">${quoteTotalUsd.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-[10px] text-gray-400 pt-0.5 border-t border-gray-200">
+                        <span>Tasa del día:</span>
+                        <span className="font-mono">Bs. {tasaInterna.toFixed(2)} / $</span>
+                      </div>
+                      <div className="text-[10px] text-rose-700 font-bold mt-1">
+                        ⚠️ Válido únicamente por 24 horas continuas
+                      </div>
+                    </div>
+                  ) : currencyMode === 'bcv' ? (
+                    <div>
+                      <div className="flex justify-between items-baseline">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-700">Total Dólares BCV ($):</span>
+                        <span className="text-xl font-black font-mono text-indigo-700">
+                          ${quoteTotalUsd.toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center text-xs text-gray-600 pt-0.5">
+                        <span>Equivalente en Bs.:</span>
+                        <span className="font-mono font-bold text-emerald-700">
+                          Bs. {quoteTotalBs.toLocaleString('es-VE', { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-[10px] text-gray-400 pt-0.5 border-t border-gray-200">
+                        <span>Tasa Oficial BCV:</span>
+                        <span className="font-mono">Bs. {tasaBcv.toFixed(2)} / $</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <div className="flex justify-between items-baseline">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-purple-700">Total Cashea (+{casheaPercent}%):</span>
+                        <span className="text-xl font-black font-mono text-purple-700">
+                          ${quoteTotalUsd.toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-1 text-[11px] pt-1 border-t border-gray-200">
+                        <div>
+                          <span className="text-gray-400">Inicial (40%):</span>
+                          <span className="font-bold text-gray-800 ml-1">${(quoteTotalUsd * 0.40).toFixed(2)}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-400">3 cuotas c/14d:</span>
+                          <span className="font-bold text-purple-700 ml-1">${((quoteTotalUsd * 0.60) / 3).toFixed(2)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Submit Button */}
@@ -610,7 +919,7 @@ export default function QuotesView({
               <div>
                 <h2 className="text-xl font-bold text-gray-900 tracking-tight">Presupuestos & Cotizaciones</h2>
                 <p className="text-xs text-gray-400">
-                  Crea cotizaciones seleccionando productos, genera PDF y envíalas por WhatsApp o cárgalas a caja
+                  Cotizaciones formales en Divisas, Bolívares (24h), BCV y Cashea con PDF y WhatsApp con 1 clic
                 </p>
               </div>
             </div>
@@ -618,7 +927,10 @@ export default function QuotesView({
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => setIsCreatingQuote(true)}
+                onClick={() => {
+                  setCurrencyMode('bolivares');
+                  setIsCreatingQuote(true);
+                }}
                 className="bg-[#00a884] hover:bg-[#008f6f] text-white font-bold px-4 py-2.5 rounded-xl text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
@@ -672,10 +984,13 @@ export default function QuotesView({
                       <td colSpan="8" className="py-16 text-center text-gray-400">
                         <FileText className="w-10 h-10 mx-auto text-gray-300 mb-2" />
                         <p className="text-sm font-semibold text-gray-600 mb-1">No hay presupuestos guardados aún</p>
-                        <p className="text-xs text-gray-400 mb-3">Crea una cotización seleccionando los productos de tu catálogo</p>
+                        <p className="text-xs text-gray-400 mb-3">Crea una cotización formal seleccionando productos del catálogo</p>
                         <button
                           type="button"
-                          onClick={() => setIsCreatingQuote(true)}
+                          onClick={() => {
+                            setCurrencyMode('bolivares');
+                            setIsCreatingQuote(true);
+                          }}
                           className="px-4 py-2 bg-[#00a884] hover:bg-[#008f6f] text-white font-bold rounded-xl text-xs inline-flex items-center gap-1.5 shadow-xs cursor-pointer transition-all"
                         >
                           <Plus className="w-4 h-4" />
@@ -684,108 +999,124 @@ export default function QuotesView({
                       </td>
                     </tr>
                   ) : (
-                    quotes.map((q) => (
-                      <tr key={q.id} className="hover:bg-gray-50/60 transition-colors">
-                        <td className="py-3 px-4 font-mono font-bold text-indigo-700">
-                          {q.quote_number}
-                        </td>
+                    quotes.map((q) => {
+                      const mode = q.currency_mode || (q.is_cashea ? 'cashea' : 'bolivares');
 
-                        <td className="py-3 px-4">
-                          <div className="font-bold text-gray-900">{q.customer_name}</div>
-                          {q.customer_phone && (
-                            <div className="text-[10px] text-gray-400 flex items-center gap-1">
-                              <Phone className="w-3 h-3 text-emerald-600" />
-                              <span>{q.customer_phone}</span>
+                      return (
+                        <tr key={q.id} className="hover:bg-gray-50/60 transition-colors">
+                          <td className="py-3 px-4 font-mono font-bold text-indigo-700">
+                            {q.quote_number}
+                          </td>
+
+                          <td className="py-3 px-4">
+                            <div className="font-bold text-gray-900">{q.customer_name}</div>
+                            {q.customer_phone && (
+                              <div className="text-[10px] text-gray-400 flex items-center gap-1">
+                                <Phone className="w-3 h-3 text-emerald-600" />
+                                <span>{q.customer_phone}</span>
+                              </div>
+                            )}
+                          </td>
+
+                          <td className="py-3 px-4 text-gray-500 whitespace-nowrap">
+                            {new Date(q.created_at).toLocaleDateString('es-VE')} {new Date(q.created_at).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })}
+                          </td>
+
+                          <td className="py-3 px-4 text-center">
+                            <span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 font-bold text-[10px]">
+                              {q.items?.length || 0} ítems
+                            </span>
+                          </td>
+
+                          <td className="py-3 px-4 text-right font-mono font-bold text-gray-900">
+                            ${q.total_usd.toFixed(2)}
+                          </td>
+
+                          <td className="py-3 px-4 text-right font-mono font-bold text-[#00a884]">
+                            {mode === 'divisas' ? (
+                              <span className="text-gray-400 font-normal">Solo Divisas</span>
+                            ) : (
+                              `Bs. ${q.total_bs.toLocaleString('es-VE', { minimumFractionDigits: 2 })}`
+                            )}
+                          </td>
+
+                          <td className="py-3 px-4 text-center">
+                            {mode === 'divisas' ? (
+                              <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[10px] border border-emerald-200">
+                                💵 Divisas ($)
+                              </span>
+                            ) : mode === 'bcv' ? (
+                              <span className="px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 font-bold text-[10px] border border-indigo-200">
+                                🏦 USD BCV
+                              </span>
+                            ) : mode === 'cashea' ? (
+                              <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 font-bold text-[10px] border border-purple-200">
+                                🟣 Cashea
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 font-bold text-[10px] border border-rose-200">
+                                ⏳ Bs. (24h)
+                              </span>
+                            )}
+                          </td>
+
+                          <td className="py-3 px-4 text-right whitespace-nowrap">
+                            <div className="flex items-center justify-end gap-1">
+                              {/* Ver Detalle / Proforma */}
+                              <button
+                                type="button"
+                                onClick={() => setSelectedQuote(q)}
+                                className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-100 text-gray-600 transition-colors cursor-pointer"
+                                title="Ver detalle formal"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                              </button>
+
+                              {/* Descargar PDF */}
+                              <button
+                                type="button"
+                                onClick={() => generateQuotePdf(q, settings, 'download')}
+                                className="p-1.5 rounded-lg border border-gray-200 bg-white hover:bg-indigo-50 text-indigo-600 transition-colors cursor-pointer"
+                                title="Descargar PDF formal"
+                              >
+                                <Download className="w-3.5 h-3.5" />
+                              </button>
+
+                              {/* WhatsApp */}
+                              <button
+                                type="button"
+                                onClick={() => handleShareWhatsApp(q)}
+                                className="p-1.5 rounded-lg border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-colors cursor-pointer"
+                                title="Enviar por WhatsApp"
+                              >
+                                <MessageCircle className="w-3.5 h-3.5" />
+                              </button>
+
+                              {/* Cargar a Caja */}
+                              <button
+                                type="button"
+                                onClick={() => handleLoadToCart(q)}
+                                className="px-2.5 py-1.5 bg-[#00a884] hover:bg-[#008f6f] text-white font-bold rounded-lg text-xs flex items-center gap-1 shadow-2xs transition-colors cursor-pointer"
+                                title="Cargar estos artículos al carrito del Punto de Venta"
+                              >
+                                <ShoppingCart className="w-3 h-3" />
+                                <span className="hidden sm:inline">Cargar</span>
+                              </button>
+
+                              {/* Eliminar */}
+                              <button
+                                type="button"
+                                onClick={() => setDeleteConfirm(q)}
+                                className="p-1.5 rounded-lg border border-rose-100 hover:bg-rose-50 text-rose-500 transition-colors cursor-pointer"
+                                title="Eliminar presupuesto"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
                             </div>
-                          )}
-                        </td>
-
-                        <td className="py-3 px-4 text-gray-500 whitespace-nowrap">
-                          {new Date(q.created_at).toLocaleDateString('es-VE')} {new Date(q.created_at).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })}
-                        </td>
-
-                        <td className="py-3 px-4 text-center">
-                          <span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 font-bold text-[10px]">
-                            {q.items?.length || 0} ítems
-                          </span>
-                        </td>
-
-                        <td className="py-3 px-4 text-right font-mono font-bold text-gray-900">
-                          ${q.total_usd.toFixed(2)}
-                        </td>
-
-                        <td className="py-3 px-4 text-right font-mono font-bold text-[#00a884]">
-                          Bs. {q.total_bs.toLocaleString('es-VE', { minimumFractionDigits: 2 })}
-                        </td>
-
-                        <td className="py-3 px-4 text-center">
-                          {q.is_cashea ? (
-                            <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 font-bold text-[10px]">
-                              Cashea
-                            </span>
-                          ) : (
-                            <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-bold text-[10px]">
-                              Estándar
-                            </span>
-                          )}
-                        </td>
-
-                        <td className="py-3 px-4 text-right whitespace-nowrap">
-                          <div className="flex items-center justify-end gap-1">
-                            {/* Ver Detalle / Proforma */}
-                            <button
-                              type="button"
-                              onClick={() => setSelectedQuote(q)}
-                              className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-100 text-gray-600 transition-colors cursor-pointer"
-                              title="Ver detalle"
-                            >
-                              <Eye className="w-3.5 h-3.5" />
-                            </button>
-
-                            {/* Descargar PDF */}
-                            <button
-                              type="button"
-                              onClick={() => generateQuotePdf(q, settings, 'download')}
-                              className="p-1.5 rounded-lg border border-gray-200 bg-white hover:bg-indigo-50 text-indigo-600 transition-colors cursor-pointer"
-                              title="Descargar PDF"
-                            >
-                              <Download className="w-3.5 h-3.5" />
-                            </button>
-
-                            {/* WhatsApp */}
-                            <button
-                              type="button"
-                              onClick={() => handleShareWhatsApp(q)}
-                              className="p-1.5 rounded-lg border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-colors cursor-pointer"
-                              title="Enviar por WhatsApp"
-                            >
-                              <MessageCircle className="w-3.5 h-3.5" />
-                            </button>
-
-                            {/* Cargar a Caja */}
-                            <button
-                              type="button"
-                              onClick={() => handleLoadToCart(q)}
-                              className="px-2.5 py-1.5 bg-[#00a884] hover:bg-[#008f6f] text-white font-bold rounded-lg text-xs flex items-center gap-1 shadow-2xs transition-colors cursor-pointer"
-                              title="Cargar estos artículos al carrito del Punto de Venta"
-                            >
-                              <ShoppingCart className="w-3 h-3" />
-                              <span className="hidden sm:inline">Cargar</span>
-                            </button>
-
-                            {/* Eliminar */}
-                            <button
-                              type="button"
-                              onClick={() => setDeleteConfirm(q)}
-                              className="p-1.5 rounded-lg border border-rose-100 hover:bg-rose-50 text-rose-500 transition-colors cursor-pointer"
-                              title="Eliminar presupuesto"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
@@ -797,175 +1128,272 @@ export default function QuotesView({
       {/* ========================================================= */}
       {/* 3. MODAL: VISTA PREVIA FORMAL DE COTIZACIÓN (A4 PROFORMA)  */}
       {/* ========================================================= */}
-      {selectedQuote && (
-        <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-xs flex items-center justify-center z-50 p-3 sm:p-4">
-          <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl border border-gray-100 overflow-hidden text-xs flex flex-col max-h-[92vh]">
-            {/* Modal Header */}
-            <div className="p-4 bg-[#0f172a] text-white flex items-center justify-between">
-              <div>
-                <h3 className="font-bold text-base flex items-center gap-2">
-                  <span>Presupuesto {selectedQuote.quote_number}</span>
-                  {selectedQuote.is_cashea ? (
-                    <span className="text-[10px] bg-purple-600 text-white font-bold px-2 py-0.5 rounded-full">
-                      Cashea
-                    </span>
-                  ) : null}
-                </h3>
-                <p className="text-xs text-slate-300">
-                  {selectedQuote.customer_name} {selectedQuote.customer_phone ? `• ${selectedQuote.customer_phone}` : ''}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSelectedQuote(null)}
-                className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-gray-300 flex items-center justify-center cursor-pointer transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+      {selectedQuote && (() => {
+        const qMode = selectedQuote.currency_mode || (selectedQuote.is_cashea ? 'cashea' : 'bolivares');
+        const qTasa = Number(selectedQuote.tasa_interna || tasaInterna);
+        const qTasaBcv = Number(settings?.tasa_bcv || tasaBcv);
 
-            {/* A4 Proforma Sheet Preview */}
-            <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1">
-              {/* Proforma Header */}
-              <div className="border-b border-gray-100 pb-3 flex justify-between items-start">
+        return (
+          <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-xs flex items-center justify-center z-50 p-3 sm:p-4">
+            <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl border border-gray-100 overflow-hidden text-xs flex flex-col max-h-[92vh]">
+              {/* Modal Header */}
+              <div className="p-4 bg-[#0f172a] text-white flex items-center justify-between">
                 <div>
-                  <h4 className="font-black text-base text-gray-900 uppercase tracking-tight">
-                    {settings?.company_name || 'FERRETERÍA HEBERT'}
-                  </h4>
-                  <p className="text-[11px] text-gray-400">
-                    {settings?.company_rif || 'RIF: J-50123456-7'} • {settings?.company_phone || ''}
+                  <h3 className="font-bold text-base flex items-center gap-2">
+                    <span>Presupuesto {selectedQuote.quote_number}</span>
+                    {qMode === 'divisas' && (
+                      <span className="text-[10px] bg-emerald-600 text-white font-bold px-2 py-0.5 rounded-full">
+                        Solo Divisas ($)
+                      </span>
+                    )}
+                    {qMode === 'bolivares' && (
+                      <span className="text-[10px] bg-rose-600 text-white font-bold px-2 py-0.5 rounded-full">
+                        Válido 24h
+                      </span>
+                    )}
+                    {qMode === 'bcv' && (
+                      <span className="text-[10px] bg-indigo-600 text-white font-bold px-2 py-0.5 rounded-full">
+                        Tasa BCV
+                      </span>
+                    )}
+                    {qMode === 'cashea' && (
+                      <span className="text-[10px] bg-purple-600 text-white font-bold px-2 py-0.5 rounded-full">
+                        Cashea
+                      </span>
+                    )}
+                  </h3>
+                  <p className="text-xs text-slate-300">
+                    {selectedQuote.customer_name} {selectedQuote.customer_phone ? `• ${selectedQuote.customer_phone}` : ''}
                   </p>
-                  <p className="text-[11px] text-gray-400">{settings?.company_address || ''}</p>
                 </div>
-                <div className="text-right">
-                  <span className="px-2.5 py-1 rounded-lg bg-emerald-50 text-[#00a884] font-black text-xs">
-                    COTIZACIÓN FORMAL
-                  </span>
-                  <div className="font-mono font-bold text-gray-900 mt-1">
-                    {selectedQuote.quote_number}
-                  </div>
-                  <div className="text-[10px] text-gray-400">
-                    {new Date(selectedQuote.created_at || Date.now()).toLocaleDateString('es-VE')}
-                  </div>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedQuote(null)}
+                  className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-gray-300 flex items-center justify-center cursor-pointer transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
 
-              {/* Customer Box */}
-              <div className="bg-gray-50 rounded-xl p-3 border border-gray-100 grid grid-cols-2 gap-2 text-xs">
-                <div>
-                  <span className="text-[10px] font-bold text-gray-400 uppercase">Cliente:</span>
-                  <div className="font-bold text-gray-900">{selectedQuote.customer_name}</div>
-                  {selectedQuote.customer_ci && (
-                    <div className="text-[11px] text-gray-500">C.I. / RIF: {selectedQuote.customer_ci}</div>
+              {/* A4 Proforma Sheet Preview */}
+              <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1">
+                {/* Proforma Header */}
+                <div className="border-b border-gray-100 pb-3 flex justify-between items-start">
+                  <div>
+                    <h4 className="font-black text-base text-gray-900 uppercase tracking-tight">
+                      {settings?.company_name || 'FERRETERÍA HEBERT'}
+                    </h4>
+                    <p className="text-[11px] text-gray-400">
+                      {settings?.company_rif || 'RIF: J-50123456-7'} • {settings?.company_phone || ''}
+                    </p>
+                    <p className="text-[11px] text-gray-400">{settings?.company_address || ''}</p>
+                  </div>
+                  <div className="text-right">
+                    <span className="px-2.5 py-1 rounded-lg bg-emerald-50 text-[#00a884] font-black text-xs">
+                      COTIZACIÓN FORMAL
+                    </span>
+                    <div className="font-mono font-bold text-gray-900 mt-1">
+                      {selectedQuote.quote_number}
+                    </div>
+                    <div className="text-[10px] text-gray-400">
+                      {new Date(selectedQuote.created_at || Date.now()).toLocaleDateString('es-VE')}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Banner Aviso según Modo */}
+                {qMode === 'divisas' && (
+                  <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 font-bold text-xs text-center">
+                    Presupuesto – Método de pago: Solo válido en Divisas (Efectivo / Zelle / Binance) • Precios fijos en USD
+                  </div>
+                )}
+                {qMode === 'bolivares' && (
+                  <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 font-bold text-xs text-center">
+                    ⚠️ Cláusula Obligatoria: Presupuesto válido únicamente por 24 horas • Tasa del día: Bs. {qTasa.toFixed(2)}
+                  </div>
+                )}
+                {qMode === 'bcv' && (
+                  <div className="p-2.5 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-900 font-bold text-xs text-center">
+                    Cotización a Tasa Oficial BCV: Bs. {qTasaBcv.toFixed(2)} • Válido por 24 horas
+                  </div>
+                )}
+                {qMode === 'cashea' && (
+                  <div className="p-2.5 rounded-xl bg-purple-50 border border-purple-200 text-purple-900 font-bold text-xs text-center">
+                    Cotización Modalidad Cashea (+{casheaPercent}%) a Tasa Oficial BCV • Válido por 24 horas
+                  </div>
+                )}
+
+                {/* Customer Box */}
+                <div className="bg-gray-50 rounded-xl p-3 border border-gray-100 grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <span className="text-[10px] font-bold text-gray-400 uppercase">Cliente:</span>
+                    <div className="font-bold text-gray-900">{selectedQuote.customer_name}</div>
+                    {selectedQuote.customer_ci && (
+                      <div className="text-[11px] text-gray-500">C.I. / RIF: {selectedQuote.customer_ci}</div>
+                    )}
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold text-gray-400 uppercase">Contacto:</span>
+                    <div className="font-medium text-gray-700">
+                      {selectedQuote.customer_phone || 'Sin número registrado'}
+                    </div>
+                    <div className="text-[10px] font-bold text-emerald-600">
+                      {qMode === 'divisas' ? 'Precios fijos en $' : 'Válido por 24 horas'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Items Table */}
+                <div className="border border-gray-100 rounded-xl overflow-hidden">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-gray-50 border-b border-gray-100 text-[10px] uppercase font-bold text-gray-400">
+                      <tr>
+                        <th className="py-2 px-3">Producto</th>
+                        <th className="py-2 px-3 text-center">Cant.</th>
+                        <th className="py-2 px-3 text-right">P. Unitario</th>
+                        <th className="py-2 px-3 text-right">Subtotal</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {(selectedQuote.items || []).map((it, idx) => {
+                        const price = Number(it.price_usd || it.price_usd_tienda || 0);
+                        const sub = Number(it.subtotal_usd || (price * it.quantity));
+
+                        return (
+                          <tr key={idx} className="hover:bg-gray-50/50">
+                            <td className="py-2 px-3">
+                              <div className="font-bold text-gray-900">{it.product_name || it.name}</div>
+                              <div className="text-[10px] font-mono text-gray-400">{it.product_code || it.code || 'ART'}</div>
+                            </td>
+                            <td className="py-2 px-3 text-center font-bold">{it.quantity} {it.unit || 'und'}</td>
+                            <td className="py-2 px-3 text-right font-mono">
+                              {qMode === 'divisas'
+                                ? `$${price.toFixed(2)}`
+                                : qMode === 'bolivares'
+                                ? `Bs. ${Math.round(price * qTasa).toLocaleString('es-VE')}`
+                                : `$${price.toFixed(2)}`}
+                            </td>
+                            <td className="py-2 px-3 text-right font-mono font-bold text-gray-900">
+                              {qMode === 'divisas'
+                                ? `$${sub.toFixed(2)}`
+                                : qMode === 'bolivares'
+                                ? `Bs. ${Math.round(sub * qTasa).toLocaleString('es-VE')}`
+                                : `$${sub.toFixed(2)}`}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Totals Summary */}
+                <div className="p-3.5 rounded-xl bg-gray-50 border border-gray-100 space-y-1.5 font-mono text-xs">
+                  {qMode === 'divisas' ? (
+                    <div className="flex justify-between items-baseline font-black text-emerald-700 text-base">
+                      <span>Total en Dólares ($):</span>
+                      <span>${Number(selectedQuote.total_usd).toFixed(2)}</span>
+                    </div>
+                  ) : qMode === 'bolivares' ? (
+                    <div>
+                      <div className="flex justify-between items-baseline font-black text-rose-700 text-base">
+                        <span>Total en Bolívares (Bs.):</span>
+                        <span>Bs. {Number(selectedQuote.total_bs).toLocaleString('es-VE', { minimumFractionDigits: 2 })}</span>
+                      </div>
+                      <div className="flex justify-between text-gray-500 pt-1 border-t border-gray-200">
+                        <span>Ref. en Dólares:</span>
+                        <span>${Number(selectedQuote.total_usd).toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-[11px] text-gray-400">
+                        <span>Tasa del día:</span>
+                        <span>Bs. {qTasa.toFixed(2)} / $</span>
+                      </div>
+                    </div>
+                  ) : qMode === 'bcv' ? (
+                    <div>
+                      <div className="flex justify-between items-baseline font-black text-indigo-700 text-base">
+                        <span>Total USD BCV:</span>
+                        <span>${Number(selectedQuote.total_usd).toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between font-bold text-[#00a884] pt-1 border-t border-gray-200">
+                        <span>Total en Bolívares:</span>
+                        <span>Bs. {Number(selectedQuote.total_bs).toLocaleString('es-VE', { minimumFractionDigits: 2 })}</span>
+                      </div>
+                      <div className="flex justify-between text-[11px] text-gray-400">
+                        <span>Tasa Oficial BCV:</span>
+                        <span>Bs. {qTasaBcv.toFixed(2)} / $</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <div className="flex justify-between items-baseline font-black text-purple-700 text-base">
+                        <span>Total Cashea:</span>
+                        <span>${Number(selectedQuote.total_usd).toFixed(2)}</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-1 pt-1 border-t border-gray-200 text-gray-700">
+                        <div>Inicial 40%: <b>${(Number(selectedQuote.total_usd) * 0.40).toFixed(2)}</b></div>
+                        <div>3 Cuotas c/14d: <b>${((Number(selectedQuote.total_usd) * 0.60) / 3).toFixed(2)}</b></div>
+                      </div>
+                    </div>
                   )}
                 </div>
-                <div>
-                  <span className="text-[10px] font-bold text-gray-400 uppercase">Contacto:</span>
-                  <div className="font-medium text-gray-700">
-                    {selectedQuote.customer_phone || 'Sin número registrado'}
-                  </div>
-                  <div className="text-[10px] text-emerald-600 font-bold">Válido por 3 días</div>
+
+                {/* Commercial disclaimer */}
+                <div className="p-3 rounded-xl bg-amber-50 border border-amber-200/80 text-[11px] text-amber-800 leading-relaxed">
+                  <strong>Condiciones:</strong> {selectedQuote.notes || (
+                    qMode === 'bolivares'
+                      ? 'Presupuesto válido únicamente por 24 horas continuas a la tasa del día.'
+                      : qMode === 'divisas'
+                      ? 'Solo válido en Divisas (Efectivo / Zelle / Binance). Precios fijos en dólares.'
+                      : 'Cotización sujeta a tasa oficial BCV con validez de 24 horas.'
+                  )}
                 </div>
               </div>
 
-              {/* Items Table */}
-              <div className="border border-gray-100 rounded-xl overflow-hidden">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-gray-50 border-b border-gray-100 text-[10px] uppercase font-bold text-gray-400">
-                    <tr>
-                      <th className="py-2 px-3">Producto</th>
-                      <th className="py-2 px-3 text-center">Cant.</th>
-                      <th className="py-2 px-3 text-right">P. Unit ($)</th>
-                      <th className="py-2 px-3 text-right">Subtotal ($)</th>
-                      <th className="py-2 px-3 text-right text-emerald-700">Subtotal (Bs.)</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-50">
-                    {(selectedQuote.items || []).map((it, idx) => (
-                      <tr key={idx} className="hover:bg-gray-50/50">
-                        <td className="py-2 px-3">
-                          <div className="font-bold text-gray-900">{it.product_name || it.name}</div>
-                          <div className="text-[10px] font-mono text-gray-400">{it.product_code || it.code || 'ART'}</div>
-                        </td>
-                        <td className="py-2 px-3 text-center font-bold">{it.quantity} {it.unit || 'und'}</td>
-                        <td className="py-2 px-3 text-right font-mono">${Number(it.price_usd || it.price_usd_tienda || 0).toFixed(2)}</td>
-                        <td className="py-2 px-3 text-right font-mono font-bold text-gray-900">
-                          ${Number(it.subtotal_usd || (it.price_usd * it.quantity)).toFixed(2)}
-                        </td>
-                        <td className="py-2 px-3 text-right font-mono font-bold text-[#00a884]">
-                          Bs. {Number(it.subtotal_bs || (it.subtotal_usd * tasaInterna) || 0).toLocaleString('es-VE', { minimumFractionDigits: 2 })}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              {/* Action Buttons */}
+              <div className="p-4 bg-gray-50 border-t border-gray-100 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedQuote(null)}
+                  className="py-2.5 px-3 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded-xl text-xs cursor-pointer"
+                >
+                  Cerrar
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => generateQuotePdf(selectedQuote, settings, 'download')}
+                  className="flex-1 py-2.5 px-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl flex items-center justify-center gap-1.5 text-xs shadow-xs cursor-pointer transition-colors"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Descargar PDF</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleShareWhatsApp(selectedQuote)}
+                  className="flex-1 py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl flex items-center justify-center gap-1.5 text-xs shadow-xs cursor-pointer transition-colors"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  <span>Enviar por WhatsApp</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleLoadToCart(selectedQuote);
+                    setSelectedQuote(null);
+                  }}
+                  className="py-2.5 px-4 bg-[#00a884] hover:bg-[#008f6f] text-white font-bold rounded-xl flex items-center justify-center gap-1.5 text-xs shadow-xs cursor-pointer transition-colors"
+                >
+                  <ShoppingCart className="w-4 h-4" />
+                  <span>Cargar a Caja</span>
+                </button>
               </div>
-
-              {/* Totals Summary */}
-              <div className="p-3.5 rounded-xl bg-gray-50 border border-gray-100 space-y-1.5 font-mono text-xs">
-                <div className="flex justify-between items-baseline font-bold text-gray-900 text-sm">
-                  <span>Total Dólares ($):</span>
-                  <span className="text-base">${Number(selectedQuote.total_usd).toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between items-baseline font-black text-[#00a884] text-sm">
-                  <span>Total Bolívares (Bs.):</span>
-                  <span className="text-base">Bs. {Number(selectedQuote.total_bs).toLocaleString('es-VE', { minimumFractionDigits: 2 })}</span>
-                </div>
-                <div className="flex justify-between text-[11px] text-gray-500 pt-1 border-t border-gray-200">
-                  <span>Tasa de Referencia:</span>
-                  <span>Bs. {Number(selectedQuote.tasa_interna || tasaInterna).toFixed(2)} / $</span>
-                </div>
-              </div>
-
-              {/* Commercial disclaimer */}
-              <div className="p-3 rounded-xl bg-amber-50 border border-amber-200/80 text-[11px] text-amber-800 leading-relaxed">
-                <strong>Nota Comercial:</strong> Los precios en dólares se mantienen durante los 3 días de vigencia de esta cotización. Los montos en bolívares se calculan a la tasa del día al momento de concretar la compra.
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="p-4 bg-gray-50 border-t border-gray-100 flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => setSelectedQuote(null)}
-                className="py-2.5 px-3 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded-xl text-xs cursor-pointer"
-              >
-                Cerrar
-              </button>
-
-              <button
-                type="button"
-                onClick={() => generateQuotePdf(selectedQuote, settings, 'download')}
-                className="flex-1 py-2.5 px-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl flex items-center justify-center gap-1.5 text-xs shadow-xs cursor-pointer transition-colors"
-              >
-                <Download className="w-4 h-4" />
-                <span>Descargar PDF</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleShareWhatsApp(selectedQuote)}
-                className="flex-1 py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl flex items-center justify-center gap-1.5 text-xs shadow-xs cursor-pointer transition-colors"
-              >
-                <MessageCircle className="w-4 h-4" />
-                <span>Enviar por WhatsApp</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  handleLoadToCart(selectedQuote);
-                  setSelectedQuote(null);
-                }}
-                className="py-2.5 px-4 bg-[#00a884] hover:bg-[#008f6f] text-white font-bold rounded-xl flex items-center justify-center gap-1.5 text-xs shadow-xs cursor-pointer transition-colors"
-              >
-                <ShoppingCart className="w-4 h-4" />
-                <span>Cargar a Caja</span>
-              </button>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ========================================================= */}
       {/* 4. MODAL: CONFIRMACIÓN DE ELIMINACIÓN DE PRESUPUESTO       */}

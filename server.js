@@ -145,14 +145,19 @@ app.get('/api/products', (req, res) => {
 
 app.post('/api/products', (req, res) => {
   try {
-    const { code, name, category, unit, allow_decimals, cost_usd, price_usd, price_cashea, stock, min_stock, synonyms, image_url } = req.body;
+    const { code, name, category, unit, allow_decimals, cost_usd, price_usd, price_cashea, stock, min_stock, synonyms, image_url, is_active, provider_code, provider_notes } = req.body;
     if (!code || !name || price_usd === undefined) {
       return res.status(400).json({ error: 'Código, nombre y precio en USD son obligatorios' });
     }
 
+    const rates = getRates();
+    const finalPriceCashea = (price_cashea !== undefined && price_cashea !== null && parseFloat(price_cashea) > 0)
+      ? parseFloat(price_cashea)
+      : Math.round((parseFloat(price_usd) * (1 + rates.cashea_percent / 100)) * 100) / 100;
+
     const info = db.prepare(`
-      INSERT INTO products (code, name, category, unit, allow_decimals, cost_usd, price_usd, price_cashea, stock, min_stock, synonyms, image_url)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO products (code, name, category, unit, allow_decimals, cost_usd, price_usd, price_cashea, stock, min_stock, synonyms, image_url, is_active, provider_code, provider_notes)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       code.trim(),
       name.trim(),
@@ -161,14 +166,16 @@ app.post('/api/products', (req, res) => {
       allow_decimals ? 1 : 0,
       parseFloat(cost_usd) || 0.0,
       parseFloat(price_usd) || 0.0,
-      price_cashea !== undefined && price_cashea !== null ? parseFloat(price_cashea) : 0.0,
+      finalPriceCashea,
       parseFloat(stock) || 0.0,
       parseFloat(min_stock) || 5.0,
       synonyms || '',
-      image_url || ''
+      image_url || '',
+      is_active !== undefined ? (is_active ? 1 : 0) : 1,
+      provider_code || '',
+      provider_notes || ''
     );
 
-    const rates = getRates();
     const created = db.prepare('SELECT * FROM products WHERE id = ?').get(info.lastInsertRowid);
     res.status(201).json(formatProductPrices(created, rates));
   } catch (err) {
@@ -179,7 +186,13 @@ app.post('/api/products', (req, res) => {
 app.put('/api/products/:id', (req, res) => {
   try {
     const id = req.params.id;
-    const { code, name, category, unit, allow_decimals, cost_usd, price_usd, price_cashea, stock, min_stock, synonyms, image_url } = req.body;
+    const { code, name, category, unit, allow_decimals, cost_usd, price_usd, price_cashea, stock, min_stock, synonyms, image_url, is_active, provider_code, provider_notes } = req.body;
+
+    const rates = getRates();
+    let finalPriceCashea = price_cashea !== undefined ? parseFloat(price_cashea) : null;
+    if (price_usd !== undefined && (finalPriceCashea === null || isNaN(finalPriceCashea) || finalPriceCashea <= 0)) {
+      finalPriceCashea = Math.round((parseFloat(price_usd) * (1 + rates.cashea_percent / 100)) * 100) / 100;
+    }
 
     db.prepare(`
       UPDATE products
@@ -194,7 +207,10 @@ app.put('/api/products/:id', (req, res) => {
           stock = COALESCE(?, stock),
           min_stock = COALESCE(?, min_stock),
           synonyms = COALESCE(?, synonyms),
-          image_url = COALESCE(?, image_url)
+          image_url = COALESCE(?, image_url),
+          is_active = COALESCE(?, is_active),
+          provider_code = COALESCE(?, provider_code),
+          provider_notes = COALESCE(?, provider_notes)
       WHERE id = ?
     `).run(
       code ? code.trim() : null,
@@ -204,17 +220,34 @@ app.put('/api/products/:id', (req, res) => {
       allow_decimals !== undefined ? (allow_decimals ? 1 : 0) : null,
       cost_usd !== undefined ? parseFloat(cost_usd) : null,
       price_usd !== undefined ? parseFloat(price_usd) : null,
-      price_cashea !== undefined ? parseFloat(price_cashea) : null,
+      finalPriceCashea,
       stock !== undefined ? parseFloat(stock) : null,
       min_stock !== undefined ? parseFloat(min_stock) : null,
       synonyms,
       image_url,
+      is_active !== undefined ? (is_active ? 1 : 0) : null,
+      provider_code !== undefined ? provider_code : null,
+      provider_notes !== undefined ? provider_notes : null,
       id
     );
 
-    const rates = getRates();
     const updated = db.prepare('SELECT * FROM products WHERE id = ?').get(id);
     if (!updated) return res.status(404).json({ error: 'Producto no encontrado' });
+    res.json(formatProductPrices(updated, rates));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.patch('/api/products/:id/toggle-active', (req, res) => {
+  try {
+    const prod = db.prepare('SELECT * FROM products WHERE id = ?').get(req.params.id);
+    if (!prod) return res.status(404).json({ error: 'Producto no encontrado' });
+    const currentActive = prod.is_active !== undefined ? prod.is_active : 1;
+    const newActive = currentActive === 1 ? 0 : 1;
+    db.prepare('UPDATE products SET is_active = ? WHERE id = ?').run(newActive, req.params.id);
+    const updated = db.prepare('SELECT * FROM products WHERE id = ?').get(req.params.id);
+    const rates = getRates();
     res.json(formatProductPrices(updated, rates));
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -836,27 +869,34 @@ app.get('/api/credits', (req, res) => {
       };
     });
 
-    if (statusFilter !== 'all') {
-      credits = credits.filter(c => c.computed_status === statusFilter);
-    }
-
-    // Calculate KPI summaries
+    // Calculate KPI summaries across all credits
     const totalPendingUsd = credits
       .filter(c => c.computed_status !== 'paid')
       .reduce((sum, c) => sum + (c.credit_balance_usd || 0), 0);
     const totalOverdueUsd = credits
       .filter(c => c.computed_status === 'overdue')
       .reduce((sum, c) => sum + (c.credit_balance_usd || 0), 0);
+    const dueSoonCount = credits
+      .filter(c => c.computed_status !== 'paid' && c.days_remaining >= 0 && c.days_remaining <= 1)
+      .length;
     const rates = getRates();
 
+    let filteredCredits = credits;
+    if (statusFilter === 'due_soon') {
+      filteredCredits = credits.filter(c => c.computed_status !== 'paid' && c.days_remaining >= 0 && c.days_remaining <= 1);
+    } else if (statusFilter !== 'all') {
+      filteredCredits = credits.filter(c => c.computed_status === statusFilter);
+    }
+
     res.json({
-      credits,
+      credits: filteredCredits,
       summary: {
         total_records: credits.length,
         total_pending_usd: Math.round(totalPendingUsd * 100) / 100,
         total_pending_bs: Math.round(totalPendingUsd * rates.tasa_interna * 100) / 100,
         total_overdue_usd: Math.round(totalOverdueUsd * 100) / 100,
         total_overdue_bs: Math.round(totalOverdueUsd * rates.tasa_interna * 100) / 100,
+        due_soon_count: dueSoonCount
       }
     });
   } catch (err) {

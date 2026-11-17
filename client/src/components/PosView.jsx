@@ -80,6 +80,7 @@ export default function PosView({
   };
 
   const casheaPercent = settings?.cashea_percent || 15;
+  const activeProducts = products.filter(p => p.is_active !== 0);
 
   return (
     <div className="space-y-3.5 w-full max-w-[1720px] mx-auto">
@@ -98,7 +99,7 @@ export default function PosView({
           </div>
           <div className="flex items-center gap-2 text-xs text-gray-400 font-medium">
             <Box className="w-3.5 h-3.5" />
-            <span>{products.length} productos</span>
+            <span>{activeProducts.length} productos</span>
             <span>•</span>
             <span className="text-[#00a884] font-semibold">[F2] para buscar</span>
           </div>
@@ -197,10 +198,10 @@ export default function PosView({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-start">
         {/* CATALOG CONTAINER */}
         <div className="lg:col-span-8 xl:col-span-8 2xl:col-span-9 bg-white rounded-2xl border border-gray-100 shadow-xs p-3.5 sm:p-4">
-          {products.length === 0 ? (
+          {activeProducts.length === 0 ? (
             <div className="py-16 text-center text-gray-400">
               <Box className="w-10 h-10 mx-auto stroke-1 text-gray-300 mb-2" />
-              <p className="text-sm font-semibold text-gray-600">No se encontraron productos</p>
+              <p className="text-sm font-semibold text-gray-600">No se encontraron productos disponibles</p>
               <p className="text-xs text-gray-400">Prueba con otro término de búsqueda o categoría</p>
             </div>
           ) : posViewMode === 'grid' ? (
@@ -208,9 +209,11 @@ export default function PosView({
             /* VISTA CUADRÍCULA COMPACTA Y EFICIENTE (4-5 COLS)    */
             /* =================================================== */
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2.5 sm:gap-3">
-              {products.map(prod => {
+              {activeProducts.map(prod => {
                 const displayPriceUsd = isCasheaActive ? prod.price_cashea : prod.price_usd_tienda;
                 const displayPriceBs = isCasheaActive ? prod.price_cashea_bs : prod.price_bs;
+                const tasaBcvVal = Number(settings?.tasa_bcv || 883.40);
+                const displayPriceUsdBcv = prod.price_usd_bcv ? Number(prod.price_usd_bcv) : (displayPriceBs / tasaBcvVal);
 
                 return (
                   <div
@@ -263,8 +266,8 @@ export default function PosView({
                       </h4>
                     </div>
 
-                    {/* Clean Pricing: No BCV Clutter! */}
-                    <div className="pt-2 border-t border-gray-100 mt-2">
+                    {/* Pricing: Tienda $, Bs. y USD BCV $ */}
+                    <div className="pt-2 border-t border-gray-100 mt-2 space-y-1">
                       <div className="flex items-baseline justify-between">
                         <span className={`text-base font-extrabold font-mono tracking-tight leading-none ${isCasheaActive ? 'text-purple-700' : 'text-gray-900'}`}>
                           ${Number(displayPriceUsd).toFixed(2)}
@@ -272,6 +275,10 @@ export default function PosView({
                         <span className="text-[11px] font-bold text-gray-500 font-mono">
                           Bs. {Number(displayPriceBs).toLocaleString('es-VE', { minimumFractionDigits: 2 })}
                         </span>
+                      </div>
+                      <div className="flex items-center justify-between text-[10px] font-mono text-indigo-600 bg-indigo-50/70 px-1.5 py-0.5 rounded">
+                        <span className="font-medium text-gray-500">USD BCV:</span>
+                        <span className="font-bold">${displayPriceUsdBcv.toFixed(2)}</span>
                       </div>
                     </div>
                   </div>
@@ -292,12 +299,15 @@ export default function PosView({
                     <th className="pb-2.5">Stock</th>
                     <th className="pb-2.5 text-right">Precio USD ($)</th>
                     <th className="pb-2.5 text-right">Precio Bs.</th>
+                    <th className="pb-2.5 text-right text-indigo-700 font-bold">USD BCV ($)</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
-                  {products.map(prod => {
+                  {activeProducts.map(prod => {
                     const displayPriceUsd = isCasheaActive ? prod.price_cashea : prod.price_usd_tienda;
                     const displayPriceBs = isCasheaActive ? prod.price_cashea_bs : prod.price_bs;
+                    const tasaBcvVal = Number(settings?.tasa_bcv || 883.40);
+                    const displayPriceUsdBcv = prod.price_usd_bcv ? Number(prod.price_usd_bcv) : (displayPriceBs / tasaBcvVal);
 
                     return (
                       <tr
@@ -341,6 +351,9 @@ export default function PosView({
                         </td>
                         <td className="py-2 text-right font-mono font-bold text-[#00a884] text-xs">
                           Bs. {displayPriceBs.toLocaleString('es-VE')}
+                        </td>
+                        <td className="py-2 text-right font-mono font-bold text-indigo-700 text-xs bg-indigo-50/40">
+                          ${displayPriceUsdBcv.toFixed(2)}
                         </td>
                       </tr>
                     );

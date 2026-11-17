@@ -92,6 +92,11 @@ if (!isNativeSQLite) {
   async function syncWithTurso() {
     if (!tursoClient || isTursoSynced) return;
     try {
+      try { await tursoClient.execute("ALTER TABLE products ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1"); } catch (e) {}
+      try { await tursoClient.execute("ALTER TABLE products ADD COLUMN provider_code TEXT DEFAULT ''"); } catch (e) {}
+      try { await tursoClient.execute("ALTER TABLE products ADD COLUMN provider_notes TEXT DEFAULT ''"); } catch (e) {}
+      try { await tursoClient.execute("ALTER TABLE quotes ADD COLUMN currency_mode TEXT DEFAULT 'bolivares'"); } catch (e) {}
+
       const [settingsRes, prodsRes, custsRes, usersRes, salesRes, itemsRes, abonosRes, quotesRes, closingsRes] = await Promise.all([
         tursoClient.execute('SELECT * FROM settings WHERE id = 1'),
         tursoClient.execute('SELECT * FROM products ORDER BY name ASC'),
@@ -105,7 +110,14 @@ if (!isNativeSQLite) {
       ]);
 
       if (settingsRes.rows.length) settingsState = { ...settingsState, ...settingsRes.rows[0] };
-      if (prodsRes.rows.length) productsState = prodsRes.rows.map(r => ({ ...r }));
+      if (prodsRes.rows.length) {
+        productsState = prodsRes.rows.map(r => ({
+          ...r,
+          is_active: r.is_active !== undefined ? r.is_active : 1,
+          provider_code: r.provider_code || '',
+          provider_notes: r.provider_notes || ''
+        }));
+      }
       if (custsRes.rows.length) customersState = custsRes.rows.map(r => ({ ...r }));
       if (usersRes.rows.length) usersState = usersRes.rows.map(r => ({ ...r }));
       if (salesRes.rows.length) salesState = salesRes.rows.map(r => ({ ...r }));
@@ -326,7 +338,7 @@ if (!isNativeSQLite) {
           }
 
           if (cleanSql.includes('INSERT INTO products')) {
-            const [code, name, category, unit, allow_decimals, cost_usd, price_usd, price_cashea, stock, min_stock, synonyms, image_url] = params;
+            const [code, name, category, unit, allow_decimals, cost_usd, price_usd, price_cashea, stock, min_stock, synonyms, image_url, is_active, provider_code, provider_notes] = params;
             const newProd = {
               id: nextProductId++,
               code,
@@ -341,14 +353,27 @@ if (!isNativeSQLite) {
               min_stock: parseFloat(min_stock) || 5,
               synonyms: synonyms || '',
               image_url: image_url || '',
+              is_active: is_active !== undefined && is_active !== null ? (is_active ? 1 : 0) : 1,
+              provider_code: provider_code || '',
+              provider_notes: provider_notes || '',
               created_at: new Date().toISOString()
             };
             productsState.push(newProd);
             return { lastInsertRowid: newProd.id, changes: 1 };
           }
 
+          if (cleanSql.includes('UPDATE products SET is_active = ? WHERE id = ?')) {
+            const [is_active, id] = params;
+            const prod = productsState.find(p => p.id === parseInt(id));
+            if (prod) {
+              prod.is_active = is_active ? 1 : 0;
+              return { changes: 1 };
+            }
+            return { changes: 0 };
+          }
+
           if (cleanSql.includes('UPDATE products SET code = COALESCE')) {
-            const [code, name, category, unit, allow_decimals, cost_usd, price_usd, price_cashea, stock, min_stock, synonyms, image_url, id] = params;
+            const [code, name, category, unit, allow_decimals, cost_usd, price_usd, price_cashea, stock, min_stock, synonyms, image_url, is_active, provider_code, provider_notes, id] = params;
             const prod = productsState.find(p => p.id === parseInt(id));
             if (prod) {
               if (code) prod.code = code;
@@ -363,6 +388,9 @@ if (!isNativeSQLite) {
               if (min_stock !== null && min_stock !== undefined) prod.min_stock = parseFloat(min_stock);
               if (synonyms !== null && synonyms !== undefined) prod.synonyms = synonyms;
               if (image_url !== null && image_url !== undefined) prod.image_url = image_url;
+              if (is_active !== null && is_active !== undefined) prod.is_active = is_active ? 1 : 0;
+              if (provider_code !== null && provider_code !== undefined) prod.provider_code = provider_code;
+              if (provider_notes !== null && provider_notes !== undefined) prod.provider_notes = provider_notes;
               return { changes: 1 };
             }
             return { changes: 0 };
@@ -522,7 +550,7 @@ if (!isNativeSQLite) {
           }
 
           if (cleanSql.includes('INSERT INTO quotes')) {
-            const [quote_number, customer_name, customer_id, customer_phone, cashier_name, items_json, total_usd, total_bs, is_cashea, tasa_interna, notes] = params;
+            const [quote_number, customer_name, customer_id, customer_phone, cashier_name, items_json, total_usd, total_bs, is_cashea, tasa_interna, notes, currency_mode] = params;
             const newQuote = {
               id: nextQuoteId++,
               quote_number,
@@ -537,6 +565,7 @@ if (!isNativeSQLite) {
               tasa_interna: parseFloat(tasa_interna),
               status: 'open',
               notes: notes || '',
+              currency_mode: currency_mode || (is_cashea ? 'cashea' : 'bolivares'),
               created_at: new Date().toISOString()
             };
             quotesState.push(newQuote);
@@ -790,6 +819,10 @@ if (!isNativeSQLite) {
     try { db.exec("ALTER TABLE sales ADD COLUMN paid_punto_bs REAL DEFAULT 0.0"); } catch (e) {}
     try { db.exec("ALTER TABLE sales ADD COLUMN cashea_initial_usd REAL DEFAULT 0.0"); } catch (e) {}
     try { db.exec("ALTER TABLE sales ADD COLUMN cashea_financed_usd REAL DEFAULT 0.0"); } catch (e) {}
+    try { db.exec("ALTER TABLE products ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1"); } catch (e) {}
+    try { db.exec("ALTER TABLE products ADD COLUMN provider_code TEXT DEFAULT ''"); } catch (e) {}
+    try { db.exec("ALTER TABLE products ADD COLUMN provider_notes TEXT DEFAULT ''"); } catch (e) {}
+    try { db.exec("ALTER TABLE quotes ADD COLUMN currency_mode TEXT DEFAULT 'bolivares'"); } catch (e) {}
 
     // Ensure default settings exist
     const existingSettings = db.prepare('SELECT * FROM settings WHERE id = 1').get();

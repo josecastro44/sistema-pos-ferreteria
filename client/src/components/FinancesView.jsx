@@ -16,7 +16,8 @@ import {
   CheckCircle2,
   AlertTriangle,
   Lock,
-  ChevronDown
+  ChevronDown,
+  MessageCircle
 } from 'lucide-react';
 
 export default function FinancesView({ settings, currentUser }) {
@@ -142,6 +143,60 @@ export default function FinancesView({ settings, currentUser }) {
   const countedEfectivoBs = actualCashBs !== '' ? parseFloat(actualCashBs) : expectedEfectivoBs;
   const diffBs = Math.round((countedEfectivoBs - expectedEfectivoBs) * 100) / 100;
 
+  const handleShareClosingWhatsApp = () => {
+    if (!financesData) return;
+    const companyName = settings?.company_name || 'Ferretería Hebert';
+    const cashier = currentUser?.name || 'Admin Hebert';
+    const dateStr = startDate === endDate ? startDate : `${startDate} al ${endDate}`;
+    const tasa = Number(settings?.tasa_interna || 960).toFixed(2);
+    const tasaBcv = Number(settings?.tasa_bcv || 883.40).toFixed(2);
+
+    const totalUsd = Number(financesData.total_sales_usd || 0).toFixed(2);
+    const totalBs = Number(financesData.total_sales_bs || 0).toLocaleString('es-VE', { minimumFractionDigits: 2 });
+    const totalProfitUsd = Number(financesData.total_profit_usd || 0).toFixed(2);
+
+    const m = financesData.methods || {};
+    const abonosUsd = Number(financesData.total_abonos_usd || 0).toFixed(2);
+
+    const text = `📊 *CIERRE DIARIO DE CAJA (CIERRE Z)*\n` +
+      `🏢 *Empresa:* ${companyName}\n` +
+      `👤 *Cajero:* ${cashier}\n` +
+      `📅 *Período:* ${dateStr}\n` +
+      `📈 *Tasa Tienda:* Bs. ${tasa} | *BCV:* Bs. ${tasaBcv}\n\n` +
+      `💰 *TOTAL VENTAS:* $${totalUsd} (Bs. ${totalBs})\n` +
+      `🧾 *Cantidad de Ventas:* ${financesData.total_sales_count || 0} tickets\n` +
+      `📈 *Ganancia Bruta:* $${totalProfitUsd}\n\n` +
+      `💵 *DESGLOSE POR MÉTODO DE PAGO:*\n` +
+      `• Efectivo ($): $${Number(m.efectivo_usd || 0).toFixed(2)}\n` +
+      `• Zelle ($): $${Number(m.zelle_usd || 0).toFixed(2)}\n` +
+      `• Binance USDT ($): $${Number(m.binance_usd || 0).toFixed(2)}\n` +
+      `• Efectivo (Bs.): Bs. ${Number(m.efectivo_bs || 0).toLocaleString('es-VE')}\n` +
+      `• Pago Móvil (Bs.): Bs. ${Number(m.pago_movil_bs || 0).toLocaleString('es-VE')}\n` +
+      `• Punto de Venta (Bs.): Bs. ${Number(m.punto_bs || 0).toLocaleString('es-VE')}\n` +
+      `• Cashea: $${Number((m.cashea_initial_usd || 0) + (m.cashea_financed_usd || 0)).toFixed(2)}\n` +
+      `• Créditos Otorgados: $${Number(m.credito_total_usd || 0).toFixed(2)}\n` +
+      `• Abonos Cobrados: $${abonosUsd}\n\n` +
+      `🔒 *ARQUEO DE GAVETA:*\n` +
+      `• Efectivo $ esperado: $${expectedEfectivoUsd.toFixed(2)}\n` +
+      (actualCashUsd !== '' ? `• Efectivo $ contado: $${Number(actualCashUsd).toFixed(2)} (${diffUsd === 0 ? 'Exacto' : diffUsd > 0 ? `+$${diffUsd.toFixed(2)} Sobrante` : `$${diffUsd.toFixed(2)} Faltante`})\n` : '') +
+      `• Efectivo Bs. esperado: Bs. ${expectedEfectivoBs.toLocaleString('es-VE')}\n` +
+      (actualCashBs !== '' ? `• Efectivo Bs. contado: Bs. ${Number(actualCashBs).toLocaleString('es-VE')} (${diffBs === 0 ? 'Exacto' : diffBs > 0 ? `+Bs. ${diffBs.toLocaleString('es-VE')} Sobrante` : `Bs. ${diffBs.toLocaleString('es-VE')} Faltante`})\n` : '') +
+      (closingNotes ? `\n📝 *Notas:* ${closingNotes}\n` : '') +
+      `\n_Reporte diario emitido por Sistema POS Ferretería Hebert._`;
+
+    const rawOwnerPhone = (settings?.company_phone || '').replace(/\D/g, '');
+    let phoneParam = rawOwnerPhone;
+    if (phoneParam.startsWith('0')) {
+      phoneParam = '58' + phoneParam.substring(1);
+    }
+
+    const url = phoneParam
+      ? `https://wa.me/${phoneParam}?text=${encodeURIComponent(text)}`
+      : `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+
+    window.open(url, '_blank');
+  };
+
   return (
     <div className="space-y-4 max-w-[1720px] mx-auto">
       {/* ========================================================= */}
@@ -158,14 +213,25 @@ export default function FinancesView({ settings, currentUser }) {
           </div>
         </div>
 
-        {/* Quick Print Button */}
-        <div className="flex items-center gap-2.5">
+        {/* Quick Actions */}
+        <div className="flex items-center gap-2">
           <button
             onClick={fetchFinances}
             className="p-2 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-600 transition-colors cursor-pointer"
             title="Refrescar datos"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+
+          <button
+            type="button"
+            onClick={handleShareClosingWhatsApp}
+            disabled={!financesData}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3.5 py-2 rounded-xl text-xs flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+            title="Enviar reporte diario de cierre por WhatsApp al teléfono del dueño"
+          >
+            <MessageCircle className="w-4 h-4" />
+            <span>Enviar por WhatsApp</span>
           </button>
 
           <button
@@ -576,16 +642,28 @@ export default function FinancesView({ settings, currentUser }) {
                   </div>
                 </div>
 
-                {/* Botón Guardar Cierre */}
-                <button
-                  type="button"
-                  onClick={handleSaveDailyClose}
-                  disabled={submittingClose}
-                  className="w-full py-2.5 bg-gray-900 hover:bg-black text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-xs transition-colors cursor-pointer disabled:opacity-50"
-                >
-                  <Lock className="w-3.5 h-3.5" />
-                  <span>{submittingClose ? 'Guardando Cierre...' : 'Guardar Cierre de Caja Definitivo'}</span>
-                </button>
+                {/* Botón WhatsApp Cierre & Guardar Cierre */}
+                <div className="space-y-2">
+                  <button
+                    type="button"
+                    onClick={handleShareClosingWhatsApp}
+                    disabled={!financesData}
+                    className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-xs transition-colors cursor-pointer"
+                  >
+                    <MessageCircle className="w-3.5 h-3.5" />
+                    <span>Enviar Resumen de Cierre por WhatsApp</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleSaveDailyClose}
+                    disabled={submittingClose}
+                    className="w-full py-2.5 bg-gray-900 hover:bg-black text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    <Lock className="w-3.5 h-3.5" />
+                    <span>{submittingClose ? 'Guardando Cierre...' : 'Guardar Cierre de Caja Definitivo'}</span>
+                  </button>
+                </div>
 
                 {closingSaved && (
                   <div className="p-2.5 bg-emerald-50 text-[#00a884] border border-emerald-200 rounded-xl text-center text-xs font-bold animate-in fade-in">

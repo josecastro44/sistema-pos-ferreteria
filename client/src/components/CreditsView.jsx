@@ -14,7 +14,8 @@ import {
   Calendar,
   Coins,
   History,
-  X
+  X,
+  MessageCircle
 } from 'lucide-react';
 
 export default function CreditsView({ settings, onSelectCustomerForPos }) {
@@ -141,6 +142,66 @@ export default function CreditsView({ settings, onSelectCustomerForPos }) {
     }
   };
 
+  const handleSendWhatsAppReminder = async (credit) => {
+    try {
+      const res = await fetch(`/api/sales/${credit.id}`);
+      const saleData = await res.json();
+      const items = saleData.items || [];
+
+      const companyName = settings?.company_name || 'Ferretería Hebert';
+      const rawPhone = (credit.customer_phone || '').replace(/\D/g, '');
+      let phoneParam = rawPhone;
+      if (phoneParam.startsWith('0')) {
+        phoneParam = '58' + phoneParam.substring(1);
+      }
+
+      const dueDateStr = credit.credit_due_date ? new Date(credit.credit_due_date).toLocaleDateString('es-VE') : 'Por definir';
+      const createdDateStr = new Date(credit.created_at).toLocaleDateString('es-VE');
+
+      let dueStatus = '';
+      if (credit.computed_status === 'overdue') {
+        dueStatus = `🚨 *VENCIDA HACE ${Math.abs(credit.days_remaining)} DÍAS*`;
+      } else if (credit.days_remaining === 0) {
+        dueStatus = '⚠️ *VENCE HOY*';
+      } else if (credit.days_remaining === 1) {
+        dueStatus = '⏰ *VENCE MAÑANA*';
+      } else {
+        dueStatus = `(Plazo vigente: ${credit.days_remaining} días restantes)`;
+      }
+
+      const itemsSummary = items.length > 0
+        ? items.map(it => `• ${it.quantity}x ${it.name || it.product_name}: $${Number(it.subtotal_usd || (it.price_usd * it.quantity)).toFixed(2)}`).join('\n')
+        : '• Materiales despachados según nota de entrega';
+
+      const totalUsd = Number(credit.total_usd_tienda).toFixed(2);
+      const balanceUsd = Number(credit.credit_balance_usd || 0).toFixed(2);
+      const balanceBs = Math.round(Number(credit.credit_balance_usd || 0) * (credit.tasa_interna || settings?.tasa_interna || 960)).toLocaleString('es-VE');
+      const tasa = Number(credit.tasa_interna || settings?.tasa_interna || 960).toFixed(2);
+
+      const text = `*NOTA DE ENTREGA & RECORDATORIO DE PAGO* - ${companyName}\n` +
+        `👤 *Cliente:* ${credit.customer_name}\n` +
+        `📄 *Ticket / Factura:* #${credit.sale_number}\n` +
+        `📅 *Fecha de Despacho:* ${createdDateStr}\n` +
+        `⏳ *Fecha Límite:* ${dueDateStr} ${dueStatus}\n\n` +
+        `📦 *Materiales Retirados:*\n${itemsSummary}\n\n` +
+        `💵 *Total Facturado:* $${totalUsd}\n` +
+        `💰 *SALDO PENDIENTE:* $${balanceUsd} (Bs. ${balanceBs})\n` +
+        `📊 *Tasa de Referencia:* Bs. ${tasa} / $\n\n` +
+        `🏦 *Datos para Pago:*\n` +
+        `• Pago Móvil: ${settings?.company_phone || 'Consultar'} | RIF: ${settings?.company_rif || 'Consultar'}\n` +
+        `• Efectivo Divisas o Bolívares a la tasa del día\n\n` +
+        `_Estimado cliente, recuerde mantener su cuenta al día para seguir disfrutando de su línea de crédito. ¡Gracias!_`;
+
+      const url = phoneParam
+        ? `https://wa.me/${phoneParam}?text=${encodeURIComponent(text)}`
+        : `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+
+      window.open(url, '_blank');
+    } catch (err) {
+      alert('Error al generar recordatorio: ' + err.message);
+    }
+  };
+
   return (
     <div className="space-y-4 max-w-[1720px] mx-auto">
       {/* ========================================================= */}
@@ -222,7 +283,7 @@ export default function CreditsView({ settings, onSelectCustomerForPos }) {
       {/* ========================================================= */}
       <div className="bg-white rounded-2xl border border-gray-100 p-3.5 shadow-xs flex flex-wrap items-center justify-between gap-3">
         {/* Status Filters */}
-        <div className="flex items-center gap-1.5 bg-gray-100/80 p-1 rounded-xl text-xs font-semibold">
+        <div className="flex flex-wrap items-center gap-1.5 bg-gray-100/80 p-1 rounded-xl text-xs font-semibold">
           <button
             onClick={() => setStatusFilter('pending')}
             className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
@@ -232,6 +293,23 @@ export default function CreditsView({ settings, onSelectCustomerForPos }) {
             }`}
           >
             Pendientes / Por Cobrar
+          </button>
+          <button
+            onClick={() => setStatusFilter('due_soon')}
+            className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+              statusFilter === 'due_soon'
+                ? 'bg-amber-500 text-white shadow-xs font-bold'
+                : 'text-amber-700 hover:text-amber-900 hover:bg-amber-50'
+            }`}
+          >
+            <span>⏰ Vencen Hoy / Mañana</span>
+            {summary.due_soon_count > 0 && (
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                statusFilter === 'due_soon' ? 'bg-white text-amber-600' : 'bg-amber-200 text-amber-900'
+              }`}>
+                {summary.due_soon_count}
+              </span>
+            )}
           </button>
           <button
             onClick={() => setStatusFilter('overdue')}
@@ -338,20 +416,24 @@ export default function CreditsView({ settings, onSelectCustomerForPos }) {
                               {new Date(c.credit_due_date).toLocaleDateString('es-VE')}
                             </div>
                             {!isPaid && (
-                              <div
-                                className={`text-[10px] font-bold ${
-                                  isOverdue
-                                    ? 'text-rose-600'
-                                    : c.days_remaining <= 3
-                                    ? 'text-amber-600'
-                                    : 'text-gray-400'
-                                }`}
-                              >
-                                {isOverdue
-                                  ? `Vencida hace ${Math.abs(c.days_remaining)} días`
-                                  : c.days_remaining === 0
-                                  ? 'Vence hoy'
-                                  : `Quedan ${c.days_remaining} días`}
+                              <div className="mt-0.5">
+                                {isOverdue ? (
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200">
+                                    🚨 Vencida ({Math.abs(c.days_remaining)}d)
+                                  </span>
+                                ) : c.days_remaining === 0 ? (
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-black bg-amber-500 text-white animate-pulse">
+                                    ⚠️ VENCE HOY
+                                  </span>
+                                ) : c.days_remaining === 1 ? (
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                                    ⏰ Vence Mañana
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-50 text-emerald-800 border border-emerald-200/60">
+                                    ✓ Al día ({c.days_remaining}d)
+                                  </span>
+                                )}
                               </div>
                             )}
                           </div>
@@ -390,6 +472,11 @@ export default function CreditsView({ settings, onSelectCustomerForPos }) {
                             <AlertTriangle className="w-3 h-3" />
                             Vencida
                           </span>
+                        ) : c.days_remaining <= 1 ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                            <Clock className="w-3 h-3" />
+                            Por Vencer
+                          </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200/60">
                             <Clock className="w-3 h-3" />
@@ -401,10 +488,22 @@ export default function CreditsView({ settings, onSelectCustomerForPos }) {
                       {/* Acciones */}
                       <td className="py-3 px-4 text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-1.5">
+                          {/* Botón Cobro WhatsApp 1 Clic */}
+                          {!isPaid && (
+                            <button
+                              type="button"
+                              onClick={() => handleSendWhatsAppReminder(c)}
+                              className="p-1.5 rounded-lg border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-colors cursor-pointer"
+                              title="Enviar recordatorio de cobro / Nota de entrega digital por WhatsApp"
+                            >
+                              <MessageCircle className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+
                           {!isPaid && (
                             <button
                               onClick={() => handleOpenAbonoModal(c)}
-                              className="px-3 py-1.5 bg-[#00a884] hover:bg-[#008f6f] text-white font-bold rounded-xl text-xs flex items-center gap-1 shadow-xs transition-colors cursor-pointer"
+                              className="px-2.5 py-1.5 bg-[#00a884] hover:bg-[#008f6f] text-white font-bold rounded-xl text-xs flex items-center gap-1 shadow-xs transition-colors cursor-pointer"
                               title="Registrar Abono o Pago"
                             >
                               <Plus className="w-3.5 h-3.5" />
