@@ -401,6 +401,11 @@ export default function MainLayout({
                 type="search"
                 value={searchQuery}
                 onChange={onSearchChange}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && activeTab !== 'pos') {
+                    setActiveTab('pos');
+                  }
+                }}
                 placeholder="Buscar código, producto, cliente... [F2]"
                 className="w-full bg-[#F4F6F8] hover:bg-[#EFF2F5] focus:bg-white text-[13px] text-[#111827] placeholder:text-slate-400 pl-10 pr-4 py-2 rounded-xl border border-transparent focus:border-[#074E4A]/30 focus:outline-none transition-colors"
               />

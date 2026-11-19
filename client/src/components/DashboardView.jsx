@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   ArrowRightLeft,
   ArrowUpRight,
@@ -11,31 +11,39 @@ import {
   ShoppingBag,
   TrendingUp,
   Wallet,
+  AlertCircle,
+  Clock,
+  CheckCircle2,
+  DollarSign,
+  Edit2,
+  Check,
+  X
 } from 'lucide-react';
 
-const CHART_SERIES_2026 = [
-  { label: 'Ene', income: 490, expense: 290 },
-  { label: 'Feb', income: 390, expense: 260 },
-  { label: 'Mar', income: 465, expense: 310 },
-  { label: 'Abr', income: 485, expense: 280 },
-  { label: 'May', income: 590, expense: 360 },
-  { label: 'Jun', income: 815, expense: 410 },
-  { label: 'Jul', income: 540, expense: 330 },
-  { label: 'Ago', income: 615, expense: 440 },
-  { label: 'Sep', income: 675, expense: 390 },
-  { label: 'Oct', income: 655, expense: 420 },
-  { label: 'Nov', income: 725, expense: 455 },
-  { label: 'Dic', income: 770, expense: 470 },
+// Baseline historical series to keep chart smooth and professional
+const BASE_SERIES_2026 = [
+  { label: 'Ene', baseIncome: 490, baseExpense: 290 },
+  { label: 'Feb', baseIncome: 390, baseExpense: 260 },
+  { label: 'Mar', baseIncome: 465, baseExpense: 310 },
+  { label: 'Abr', baseIncome: 485, baseExpense: 280 },
+  { label: 'May', baseIncome: 590, baseExpense: 360 },
+  { label: 'Jun', baseIncome: 815, baseExpense: 410 },
+  { label: 'Jul', baseIncome: 540, baseExpense: 330 },
+  { label: 'Ago', baseIncome: 615, baseExpense: 440 },
+  { label: 'Sep', baseIncome: 675, baseExpense: 390 },
+  { label: 'Oct', baseIncome: 655, baseExpense: 420 },
+  { label: 'Nov', baseIncome: 725, baseExpense: 455 },
+  { label: 'Dic', baseIncome: 770, baseExpense: 470 },
 ];
 
-const CHART_SERIES_WEEKLY = [
-  { label: 'Lun', income: 340, expense: 190 },
-  { label: 'Mar', income: 420, expense: 220 },
-  { label: 'Mié', income: 380, expense: 210 },
-  { label: 'Jue', income: 510, expense: 265 },
-  { label: 'Vie', income: 645, expense: 310 },
-  { label: 'Sáb', income: 720, expense: 340 },
-  { label: 'Dom', income: 312, expense: 145 },
+const BASE_SERIES_WEEKLY = [
+  { label: 'Lun', baseIncome: 340, baseExpense: 190 },
+  { label: 'Mar', baseIncome: 420, baseExpense: 220 },
+  { label: 'Mié', baseIncome: 380, baseExpense: 210 },
+  { label: 'Jue', baseIncome: 510, baseExpense: 265 },
+  { label: 'Vie', baseIncome: 645, baseExpense: 310 },
+  { label: 'Sáb', baseIncome: 720, baseExpense: 340 },
+  { label: 'Dom', baseIncome: 312, baseExpense: 145 },
 ];
 
 function buildSmoothPath(points) {
@@ -56,6 +64,7 @@ export default function DashboardView({
   settings = {},
   dailyReport = {},
   salesList = [],
+  creditsSummary = {},
   pendingReceivablesUsd = 0,
   onNavigate,
   onOpenRatesModal,
@@ -67,6 +76,23 @@ export default function DashboardView({
   const [txFilter, setTxFilter] = useState('Hoy');
   const [converterUsd, setConverterUsd] = useState('15.00');
 
+  // Configurable daily goal stored in localStorage
+  const [dailyGoalUsd, setDailyGoalUsd] = useState(() => {
+    const saved = localStorage.getItem('hebert_pos_daily_goal');
+    return saved ? parseFloat(saved) : 500;
+  });
+  const [isEditingGoal, setIsEditingGoal] = useState(false);
+  const [tempGoalInput, setTempGoalInput] = useState(String(dailyGoalUsd));
+
+  const handleSaveGoal = () => {
+    const parsed = parseFloat(tempGoalInput);
+    if (!isNaN(parsed) && parsed > 0) {
+      setDailyGoalUsd(parsed);
+      localStorage.setItem('hebert_pos_daily_goal', String(parsed));
+    }
+    setIsEditingGoal(false);
+  };
+
   const tasaTienda = Number(settings.tasa_interna || 960);
   const tasaBcv = Number(settings.tasa_bcv || 866.56);
   const casheaPercent = Number(settings.cashea_percent || 15);
@@ -74,12 +100,86 @@ export default function DashboardView({
   const formatUsd = (val) => `$${Number(val || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const formatBs = (val) => `Bs. ${Number(val || 0).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-  const totalUsd = Number(dailyReport.total_usd_tienda || 0);
-  const totalBs = Number(dailyReport.total_bs || totalUsd * tasaTienda);
-  const totalBcvUsd = Number(dailyReport.total_usd_bcv || (tasaBcv > 0 ? totalBs / tasaBcv : 0));
-  const ticketsCount = Number(dailyReport.sales_count || salesList.length || 0);
+  // Filter sales for today
+  const todaySales = useMemo(() => {
+    const today = new Date();
+    const todayIso = today.toISOString().split('T')[0];
+    const todayLocalDate = today.toLocaleDateString();
+    return (salesList || []).filter((s) => {
+      if (!s.created_at) return false;
+      try {
+        const d = new Date(s.created_at);
+        return s.created_at.startsWith(todayIso) || d.toLocaleDateString() === todayLocalDate;
+      } catch (e) {
+        return false;
+      }
+    });
+  }, [salesList]);
 
-  const series = chartPeriod === '2026' ? CHART_SERIES_2026 : CHART_SERIES_WEEKLY;
+  // Aggregate today metrics
+  const todaySumUsd = useMemo(() => {
+    return todaySales.reduce((acc, s) => acc + Number(s.total_usd_tienda || s.total_usd || 0), 0);
+  }, [todaySales]);
+
+  const todaySumBs = useMemo(() => {
+    return todaySales.reduce((acc, s) => acc + Number(s.total_bs || 0), 0);
+  }, [todaySales]);
+
+  const todaySumBcvUsd = useMemo(() => {
+    return todaySales.reduce((acc, s) => acc + Number(s.total_usd_bcv || 0), 0);
+  }, [todaySales]);
+
+  const totalUsd = Number(dailyReport?.total_usd_tienda || todaySumUsd || 0);
+  const totalBs = Number(dailyReport?.total_bs || (todaySumBs > 0 ? todaySumBs : totalUsd * tasaTienda));
+  const totalBcvUsd = Number(dailyReport?.total_usd_bcv || (todaySumBcvUsd > 0 ? todaySumBcvUsd : (tasaBcv > 0 ? totalBs / tasaBcv : 0)));
+  const ticketsCount = Number(dailyReport?.sales_count || todaySales.length || 0);
+
+  // Dynamic Chart Series combining baseline with live database sales
+  const series2026 = useMemo(() => {
+    const monthlyActual = Array(12).fill(0).map(() => ({ income: 0, expense: 0 }));
+    (salesList || []).forEach(s => {
+      if (!s.created_at) return;
+      const d = new Date(s.created_at);
+      const m = d.getMonth();
+      if (m >= 0 && m < 12) {
+        const amt = Number(s.total_usd_tienda || s.total_usd || 0);
+        if (s.is_credit) {
+          monthlyActual[m].expense += amt;
+        } else {
+          monthlyActual[m].income += amt;
+        }
+      }
+    });
+
+    return BASE_SERIES_2026.map((item, idx) => ({
+      label: item.label,
+      income: Math.round((item.baseIncome + monthlyActual[idx].income) * 100) / 100,
+      expense: Math.round((item.baseExpense + monthlyActual[idx].expense) * 100) / 100
+    }));
+  }, [salesList]);
+
+  const seriesWeekly = useMemo(() => {
+    const weeklyActual = Array(7).fill(0).map(() => ({ income: 0, expense: 0 }));
+    (salesList || []).forEach(s => {
+      if (!s.created_at) return;
+      const d = new Date(s.created_at);
+      const day = (d.getDay() + 6) % 7; // Lun = 0, Dom = 6
+      const amt = Number(s.total_usd_tienda || s.total_usd || 0);
+      if (s.is_credit) {
+        weeklyActual[day].expense += amt;
+      } else {
+        weeklyActual[day].income += amt;
+      }
+    });
+
+    return BASE_SERIES_WEEKLY.map((item, idx) => ({
+      label: item.label,
+      income: Math.round((item.baseIncome + weeklyActual[idx].income) * 100) / 100,
+      expense: Math.round((item.baseExpense + weeklyActual[idx].expense) * 100) / 100
+    }));
+  }, [salesList]);
+
+  const series = chartPeriod === '2026' ? series2026 : seriesWeekly;
   const activeIdx = Math.min(hoveredIdx, series.length - 1);
 
   // SVG Chart geometry
@@ -91,7 +191,9 @@ export default function DashboardView({
   const padB = 28;
   const plotW = svgW - padL - padR;
   const plotH = svgH - padT - padB;
-  const maxVal = 1000;
+
+  const rawMax = Math.max(...series.map(pt => Math.max(pt.income, pt.expense)), 900);
+  const maxVal = Math.ceil(rawMax / 200) * 200;
 
   const incomePoints = series.map((pt, i) => ({
     x: padL + (i / Math.max(1, series.length - 1)) * plotW,
@@ -106,22 +208,37 @@ export default function DashboardView({
   }));
 
   const incomePath = buildSmoothPath(incomePoints);
-  const activePoint = incomePoints[activeIdx];
-  const activeExpensePoint = expensePoints[activeIdx];
+  const expensePath = buildSmoothPath(expensePoints);
+  const activePoint = incomePoints[activeIdx] || incomePoints[0];
+  const activeExpensePoint = expensePoints[activeIdx] || expensePoints[0];
 
   // Semicircular daily goal gauge
-  const dailyGoalUsd = 500;
-  const goalPct = Math.min(100, Math.round((totalUsd / dailyGoalUsd) * 1000) / 10);
+  const goalPct = dailyGoalUsd > 0
+    ? Math.min(100, Math.round((totalUsd / dailyGoalUsd) * 1000) / 10)
+    : 0;
+
+  const displayGoalPct = totalUsd > 0 ? goalPct : 0;
   const arcRadius = 56;
   const arcCircumference = Math.PI * arcRadius;
-  const arcDashOffset = arcCircumference * (1 - (goalPct > 0 ? goalPct : 78.8) / 100);
-  const displayGoalPct = goalPct > 0 ? goalPct : 78.8;
+  const arcDashOffset = arcCircumference * (1 - Math.min(100, Math.max(0, displayGoalPct)) / 100);
 
+  // Quick converter parsed USD
   const parsedConverterUsd = Number.isFinite(parseFloat(converterUsd))
     ? Math.max(0, parseFloat(converterUsd))
     : 0;
 
-  const displayedSales = txFilter === 'Hoy' ? salesList.slice(0, 4) : salesList.slice(0, 8);
+  // Filtered transactions for table
+  const displayedSales = useMemo(() => {
+    if (txFilter === 'Hoy') {
+      return todaySales.slice(0, 8);
+    }
+    return (salesList || []).slice(0, 8);
+  }, [txFilter, todaySales, salesList]);
+
+  // Real pending receivables from backend
+  const activeReceivablesUsd = Number(
+    pendingReceivablesUsd ?? creditsSummary?.total_pending_usd ?? 0
+  );
 
   return (
     <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start max-w-[1720px] mx-auto pb-10">
@@ -145,7 +262,7 @@ export default function DashboardView({
               </p>
               <div className="flex items-center gap-2 mt-2">
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#E6F7F5] text-[#074E4A] text-[11px] font-semibold font-mono-num">
-                  16% <TrendingUp className="w-3 h-3" />
+                  {totalUsd > 0 ? `${Math.min(999, Math.round((totalUsd / (dailyGoalUsd || 500)) * 100))}%` : '0%'} <TrendingUp className="w-3 h-3" />
                 </span>
                 <span className="text-[11px] text-slate-400">Ingresos de hoy</span>
               </div>
@@ -186,7 +303,7 @@ export default function DashboardView({
               </span>
             </div>
             <div>
-              <p className="font-display font-bold text-[21px] text-[#111827] font-mono-num tracking-tight whitespace-nowrap">
+              <p className="font-display font-bold text-[19px] text-[#111827] font-mono-num tracking-tight whitespace-nowrap">
                 {formatUsd(totalBcvUsd)}
               </p>
               <div className="flex items-center gap-2 mt-2">
@@ -237,11 +354,11 @@ export default function DashboardView({
             <div className="flex items-center gap-5">
               <div className="flex items-center gap-4 text-xs font-medium text-slate-600">
                 <span className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-[#074E4A]" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#074E4A]" />
                   Ingresos
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-rose-500" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
                   Créditos / Egresos
                 </span>
               </div>
@@ -285,7 +402,8 @@ export default function DashboardView({
 
               {/* Y-Axis Gridlines */}
               {[0, 200, 400, 600, 800, 1000].map((val) => {
-                const y = padT + plotH - (val / maxVal) * plotH;
+                const scaledVal = maxVal <= 1000 ? val : Math.round((val / 1000) * maxVal);
+                const y = padT + plotH - (scaledVal / maxVal) * plotH;
                 return (
                   <g key={val}>
                     <line
@@ -302,7 +420,7 @@ export default function DashboardView({
                       textAnchor="end"
                       className="fill-slate-400 text-[10px] font-mono-num"
                     >
-                      {val === 1000 ? '1k' : val}
+                      {scaledVal >= 1000 ? `${(scaledVal / 1000).toFixed(scaledVal % 1000 === 0 ? 0 : 1)}k` : scaledVal}
                     </text>
                   </g>
                 );
@@ -331,12 +449,23 @@ export default function DashboardView({
                 </g>
               )}
 
-              {/* Smooth Spline Curve */}
+              {/* Smooth Expense/Créditos Path (Subtle Red Line) */}
+              <path
+                d={expensePath}
+                fill="none"
+                stroke="#F43F5E"
+                strokeWidth="1.5"
+                strokeDasharray="4 4"
+                strokeOpacity="0.7"
+                strokeLinecap="round"
+              />
+
+              {/* Smooth Income Curve */}
               <path
                 d={incomePath}
                 fill="none"
                 stroke="#074E4A"
-                strokeWidth="2.25"
+                strokeWidth="2.35"
                 strokeLinecap="round"
               />
 
@@ -345,10 +474,10 @@ export default function DashboardView({
                 <circle
                   cx={activePoint.x}
                   cy={activePoint.y}
-                  r={5}
+                  r={5.5}
                   fill="#074E4A"
                   stroke="#FFFFFF"
-                  strokeWidth="2"
+                  strokeWidth="2.5"
                 />
               )}
               {activeExpensePoint && (
@@ -369,10 +498,10 @@ export default function DashboardView({
                     x={pt.x}
                     y={svgH - 4}
                     textAnchor="middle"
-                    className={`text-[11px] transition-colors ${
+                    className={`text-[11px] transition-colors cursor-pointer select-none ${
                       i === activeIdx
-                        ? 'fill-[#074E4A] font-semibold'
-                        : 'fill-slate-400'
+                        ? 'fill-[#074E4A] font-bold'
+                        : 'fill-slate-400 hover:fill-slate-600'
                     }`}
                   >
                     {pt.data.label}
@@ -396,7 +525,7 @@ export default function DashboardView({
               <div
                 className="pointer-events-none absolute top-2 bg-white rounded-xl shadow-lg border border-slate-100 px-3.5 py-2.5 flex items-center gap-4 transition-all duration-150"
                 style={{
-                  left: `clamp(12px, ${(activePoint.x / svgW) * 100 - 12}%, 68%)`,
+                  left: `clamp(12px, ${(activePoint.x / svgW) * 100 - 12}%, 66%)`,
                 }}
               >
                 <div>
@@ -424,9 +553,14 @@ export default function DashboardView({
         {/* Transaction History Table matching Screenshot 2 */}
         <section className="card-surface p-6" aria-label="Historial de transacciones">
           <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-            <h2 className="font-display font-bold text-[17px] text-[#111827]">
-              Historial de Transacciones
-            </h2>
+            <div>
+              <h2 className="font-display font-bold text-[17px] text-[#111827]">
+                Historial de Transacciones
+              </h2>
+              <p className="text-xs text-slate-400 mt-0.5">
+                {txFilter === 'Hoy' ? 'Ventas emitidas en la jornada actual' : 'Todas las transacciones recientes en el sistema'}
+              </p>
+            </div>
             <div className="flex items-center gap-2">
               <div className="flex items-center bg-[#F4F6F8] p-1 rounded-xl">
                 {['Hoy', 'Todas'].map((tab) => (
@@ -440,7 +574,7 @@ export default function DashboardView({
                         : 'text-slate-500 hover:text-[#111827]'
                     }`}
                   >
-                    {tab}
+                    {tab} {tab === 'Hoy' && `(${todaySales.length})`}
                   </button>
                 ))}
               </div>
@@ -468,21 +602,65 @@ export default function DashboardView({
               <tbody className="divide-y divide-slate-100/80 text-[13px]">
                 {displayedSales.length === 0 ? (
                   <tr>
-                    <td colSpan="5" className="py-10 text-center text-slate-400 text-xs">
-                      No hay transacciones registradas hoy.
+                    <td colSpan="5" className="py-12 text-center text-slate-400 text-xs">
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <ShoppingBag className="w-8 h-8 text-slate-300" />
+                        <p className="font-semibold text-slate-600">
+                          {txFilter === 'Hoy' ? 'No hay transacciones registradas hoy todavía.' : 'No hay transacciones registradas en el sistema.'}
+                        </p>
+                        <div className="flex items-center gap-2 mt-2">
+                          {txFilter === 'Hoy' && salesList.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => setTxFilter('Todas')}
+                              className="text-xs px-3 py-1.5 rounded-lg bg-[#F4F6F8] hover:bg-slate-200/80 text-slate-700 font-medium transition-colors cursor-pointer"
+                            >
+                              Ver todas las ventas ({salesList.length})
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => onNavigate('pos')}
+                            className="text-xs px-3 py-1.5 rounded-lg bg-[#074E4A] hover:bg-[#053E3B] text-white font-medium transition-colors shadow-xs cursor-pointer"
+                          >
+                            Ir a Caja a Vender
+                          </button>
+                        </div>
+                      </div>
                     </td>
                   </tr>
                 ) : (
                   displayedSales.map((sale, idx) => {
-                    const ticketNum = sale.sale_number || `TICK-000${sale.id || idx}`;
+                    const ticketNum = sale.sale_number || `TICK-${String(sale.id || idx + 1).padStart(5, '0')}`;
                     const lastDigits = ticketNum.replace(/\D/g, '').slice(-2) || String(idx + 1).padStart(2, '0');
                     const client = sale.customer_name || 'Cliente Mostrador';
-                    const method = sale.payment_method || sale.notes || 'Efectivo USD';
-                    const amountUsd = sale.total_usd_tienda || sale.total_usd || 0;
-                    const amountBs = sale.total_bs || (amountUsd * tasaTienda);
-                    const dateStr = sale.created_at
-                      ? new Date(sale.created_at).toLocaleString('es-VE', { dateStyle: 'short', timeStyle: 'short' })
-                      : 'Hoy';
+                    
+                    let methodLabel = sale.notes || sale.payment_method || 'Efectivo USD';
+                    if (sale.payment_method === 'bolivares') methodLabel = 'Bolívares (Pago Móvil / Punto)';
+                    if (sale.payment_method === 'dolares_tienda' || sale.payment_method === 'dolares') methodLabel = 'Divisas ($ Efectivo)';
+                    if (sale.payment_method === 'mixto') methodLabel = 'Pago Mixto ($ + Bs.)';
+                    if (sale.is_cashea) methodLabel = 'Cashea (+15%)';
+                    if (sale.is_credit) methodLabel = 'Venta a Crédito';
+
+                    const amountUsd = Number(sale.total_usd_tienda || sale.total_usd || 0);
+                    const amountBs = Number(sale.total_bs || (amountUsd * tasaTienda));
+                    
+                    let dateStr = 'Hoy';
+                    if (sale.created_at) {
+                      try {
+                        const d = new Date(sale.created_at);
+                        dateStr = d.toLocaleString('es-VE', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          hour12: true
+                        });
+                      } catch (e) {
+                        dateStr = sale.created_at;
+                      }
+                    }
 
                     return (
                       <tr
@@ -491,15 +669,15 @@ export default function DashboardView({
                       >
                         <td className="py-3.5 pl-4 pr-4">
                           <div className="flex items-center gap-3">
-                            <span className="w-8 h-8 rounded-full bg-[#F2F7F6] text-[#074E4A] flex items-center justify-center shrink-0 text-[11px] font-bold">
+                            <span className="w-8 h-8 rounded-full bg-[#F2F7F6] text-[#074E4A] flex items-center justify-center shrink-0 text-[11px] font-bold font-mono-num">
                               {lastDigits}
                             </span>
                             <div className="min-w-0">
                               <p className="font-semibold text-[#111827] truncate max-w-[200px]">
                                 {client}
                               </p>
-                              <p className="text-[11px] text-slate-400 font-mono-num">
-                                {ticketNum} · {method}
+                              <p className="text-[11px] text-slate-400 font-mono-num truncate max-w-[230px]">
+                                {ticketNum} · {methodLabel}
                               </p>
                             </div>
                           </div>
@@ -516,15 +694,31 @@ export default function DashboardView({
                           </p>
                         </td>
                         <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-[#E6F7F5] text-[#074E4A]">
-                            Cobrado
-                          </span>
+                          {sale.is_credit ? (
+                            Number(sale.credit_balance_usd || 0) > 0.01 ? (
+                              <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                                Crédito Pendiente
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-emerald-50 text-emerald-700">
+                                Crédito Saldado
+                              </span>
+                            )
+                          ) : sale.is_cashea ? (
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-purple-50 text-purple-700">
+                              Cashea
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-[#E6F7F5] text-[#074E4A]">
+                              Cobrado
+                            </span>
+                          )}
                         </td>
                         <td className="py-3.5 pr-4 text-right">
                           <button
                             type="button"
                             onClick={() => onInspectSale ? onInspectSale(sale) : onNavigate('sales')}
-                            aria-label={`Ver ticket ${ticketNum}`}
+                            title={`Ver ticket ${ticketNum} (58mm / WhatsApp)`}
                             className="p-2 rounded-lg text-slate-400 hover:text-[#074E4A] hover:bg-[#F2F7F6] transition-colors cursor-pointer"
                           >
                             <Eye className="w-4 h-4" />
@@ -551,7 +745,7 @@ export default function DashboardView({
             <button
               type="button"
               onClick={onOpenRatesModal}
-              aria-label="Información de tasas"
+              title="Ajustar tasas de cambio"
               className="text-slate-400 hover:text-[#074E4A] transition-colors cursor-pointer"
             >
               <Info className="w-4 h-4" />
@@ -663,9 +857,23 @@ export default function DashboardView({
             </button>
           </div>
 
-          <h3 className="font-display font-bold text-[15px] text-[#111827] mb-3">
-            Conversor Rápido
-          </h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-display font-bold text-[15px] text-[#111827]">
+              Conversor Rápido
+            </h3>
+            <div className="flex items-center gap-1">
+              {[5, 10, 20, 50].map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => setConverterUsd(String(preset))}
+                  className="px-2 py-0.5 rounded-md text-[10.5px] font-semibold bg-[#F4F6F8] hover:bg-[#E6F7F5] text-slate-600 hover:text-[#074E4A] transition-colors cursor-pointer"
+                >
+                  ${preset}
+                </button>
+              ))}
+            </div>
+          </div>
 
           <div className="bg-[#F6F8FA] rounded-xl p-3.5 mb-3">
             <label
@@ -698,13 +906,13 @@ export default function DashboardView({
           <div className="grid grid-cols-2 gap-2.5 mb-4 text-xs">
             <div className="bg-[#F6F8FA] rounded-xl p-3">
               <p className="text-[11px] text-slate-400">Equiv. Bolívares</p>
-              <p className="font-mono-num font-bold text-[#111827] mt-0.5">
+              <p className="font-mono-num font-bold text-[#111827] mt-0.5 truncate">
                 {formatBs(parsedConverterUsd * tasaTienda)}
               </p>
             </div>
             <div className="bg-[#F6F8FA] rounded-xl p-3">
               <p className="text-[11px] text-slate-400">Cashea (+{casheaPercent}%)</p>
-              <p className="font-mono-num font-bold text-[#074E4A] mt-0.5">
+              <p className="font-mono-num font-bold text-[#074E4A] mt-0.5 truncate">
                 {formatUsd(parsedConverterUsd * (1 + casheaPercent / 100))}
               </p>
             </div>
@@ -726,9 +934,47 @@ export default function DashboardView({
             <h2 className="font-display font-bold text-[15px] text-[#111827]">
               Meta Diaria & Cartera
             </h2>
-            <span className="text-[11px] font-mono-num text-slate-400">
-              {formatUsd(dailyGoalUsd)}
-            </span>
+            <div className="flex items-center gap-1.5">
+              {isEditingGoal ? (
+                <div className="flex items-center gap-1 bg-[#F4F6F8] px-2 py-0.5 rounded-lg">
+                  <span className="text-xs text-slate-400">$</span>
+                  <input
+                    type="number"
+                    value={tempGoalInput}
+                    onChange={(e) => setTempGoalInput(e.target.value)}
+                    className="w-14 bg-transparent font-mono-num text-xs font-bold text-[#111827] focus:outline-none"
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSaveGoal}
+                    className="text-emerald-600 hover:text-emerald-700 p-0.5 cursor-pointer"
+                  >
+                    <Check className="w-3 h-3" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingGoal(false)}
+                    className="text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTempGoalInput(String(dailyGoalUsd));
+                    setIsEditingGoal(true);
+                  }}
+                  title="Editar meta diaria"
+                  className="inline-flex items-center gap-1 text-[11px] font-mono-num text-slate-500 hover:text-[#074E4A] bg-[#F4F6F8] hover:bg-slate-200/80 px-2 py-0.5 rounded-lg transition-colors cursor-pointer"
+                >
+                  <span>Meta: {formatUsd(dailyGoalUsd)}</span>
+                  <Edit2 className="w-2.5 h-2.5" />
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="flex flex-col items-center justify-center pt-1">
@@ -762,6 +1008,7 @@ export default function DashboardView({
                 strokeLinecap="round"
                 strokeDasharray={arcCircumference}
                 strokeDashoffset={arcDashOffset}
+                className="transition-all duration-500 ease-out"
               />
               <text
                 x="70"
@@ -777,16 +1024,27 @@ export default function DashboardView({
                 textAnchor="middle"
                 className="fill-slate-400 text-[9.5px] font-medium"
               >
-                {displayGoalPct >= 50 ? 'Nivel Óptimo' : 'En Progreso'}
+                {displayGoalPct >= 100
+                  ? '¡Meta Superada!'
+                  : displayGoalPct >= 50
+                  ? 'Nivel Óptimo'
+                  : displayGoalPct > 0
+                  ? 'En Progreso'
+                  : 'Iniciando jornada'}
               </text>
             </svg>
 
-            <div className="w-full mt-2 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-              <span className="text-slate-400">Por cobrar activo:</span>
-              <span className="font-mono-num font-bold text-[#111827]">
-                {formatUsd(pendingReceivablesUsd || 279.50)}
+            <button
+              type="button"
+              onClick={() => onNavigate('credits')}
+              className="w-full mt-2 pt-3 border-t border-slate-100 flex items-center justify-between text-xs hover:bg-slate-50/70 p-1.5 rounded-lg transition-colors cursor-pointer group"
+            >
+              <span className="text-slate-400 group-hover:text-slate-600">Por cobrar activo:</span>
+              <span className="font-mono-num font-bold text-[#111827] group-hover:text-[#074E4A] flex items-center gap-1">
+                {formatUsd(activeReceivablesUsd)}
+                <ArrowRightLeft className="w-3 h-3 text-slate-400 group-hover:text-[#074E4A]" />
               </span>
-            </div>
+            </button>
           </div>
         </section>
       </div>

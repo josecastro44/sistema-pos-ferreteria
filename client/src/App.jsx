@@ -136,6 +136,28 @@ export default function App() {
   const [dailyReport, setDailyReport] = useState(null);
   const [chartMetric, setChartMetric] = useState('usd'); // 'usd' or 'bs'
 
+  // Credits Summary State
+  const [creditsSummary, setCreditsSummary] = useState({
+    total_records: 0,
+    total_pending_usd: 0,
+    total_pending_bs: 0,
+    total_overdue_usd: 0,
+    total_overdue_bs: 0,
+    due_soon_count: 0
+  });
+
+  const fetchCreditsSummary = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/credits`);
+      const data = await res.json();
+      if (data && data.summary) {
+        setCreditsSummary(data.summary);
+      }
+    } catch (err) {
+      console.error('Error fetching credits summary:', err);
+    }
+  };
+
   // Notification Toast
   const [toast, setToast] = useState(null);
 
@@ -247,6 +269,8 @@ export default function App() {
     fetchDailyReport();
     fetchCustomers();
     fetchUsers();
+    fetchSales();
+    fetchCreditsSummary();
   }, []);
 
   // When changing tabs
@@ -262,10 +286,13 @@ export default function App() {
       fetchUsers();
     } else if (activeTab === 'sales') {
       fetchSales();
+    } else if (activeTab === 'credits') {
+      fetchCreditsSummary();
     } else if (activeTab === 'dashboard' || activeTab === 'finances') {
       fetchDailyReport();
       fetchProducts();
       fetchSales();
+      fetchCreditsSummary();
     }
   }, [activeTab]);
 
@@ -294,6 +321,8 @@ export default function App() {
       showToast('¡Tasas y Recargo Cashea actualizados con éxito!');
       fetchProducts(searchQuery);
       fetchDailyReport();
+      fetchSales();
+      fetchCreditsSummary();
     } catch (err) {
       showToast('Error actualizando tasas', 'error');
     }
@@ -514,6 +543,8 @@ export default function App() {
       showToast(isCreditSale ? '¡Venta a Crédito registrada con éxito!' : '¡Venta completada con éxito!');
       fetchProducts(searchQuery);
       fetchDailyReport();
+      fetchSales();
+      fetchCreditsSummary();
     } catch (err) {
       showToast(err.message, 'error');
     }
@@ -705,7 +736,8 @@ export default function App() {
           settings={settings}
           dailyReport={dailyReport || {}}
           salesList={salesList}
-          pendingReceivablesUsd={279.50}
+          creditsSummary={creditsSummary}
+          pendingReceivablesUsd={creditsSummary.total_pending_usd}
           onNavigate={(view) => setActiveTab(view === 'receivables' ? 'credits' : view)}
           onOpenRatesModal={() => setIsRatesModalOpen(true)}
           onInspectSale={(sale) => {

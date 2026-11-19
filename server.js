@@ -536,7 +536,13 @@ app.get('/api/sales/:id', (req, res) => {
     if (!sale) return res.status(404).json({ error: 'Venta no encontrada' });
     const items = db.prepare('SELECT * FROM sale_items WHERE sale_id = ?').all(sale.id);
     const settings = db.prepare('SELECT * FROM settings WHERE id = 1').get();
-    res.json({ sale, items, settings });
+    let customer = null;
+    if (sale.customer_id) {
+      try {
+        customer = db.prepare('SELECT * FROM customers WHERE id = ?').get(sale.customer_id);
+      } catch (e) {}
+    }
+    res.json({ sale, items, settings, customer });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
