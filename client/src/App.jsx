@@ -7,6 +7,7 @@ import FinancesView from './components/FinancesView';
 import UsersView from './components/UsersView';
 import CreditsView from './components/CreditsView';
 import QuotesView from './components/QuotesView';
+import DashboardView from './components/DashboardView';
 import { generateQuotePdf } from './utils/quotePdfGenerator';
 import {
   Plus,
@@ -264,6 +265,7 @@ export default function App() {
     } else if (activeTab === 'dashboard' || activeTab === 'finances') {
       fetchDailyReport();
       fetchProducts();
+      fetchSales();
     }
   }, [activeTab]);
 
@@ -698,68 +700,22 @@ export default function App() {
       {/* ========================================================= */}
       {/* VISTA 2: DASHBOARD & MÉTRICAS                              */}
       {/* ========================================================= */}
-      {activeTab === 'dashboard' && dailyReport && (
-        <div className="space-y-4 max-w-[1720px] mx-auto">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Dashboard General</h2>
-            <p className="text-xs text-gray-400 mt-1">Métricas clave, flujo de caja y distribución de ventas</p>
-          </div>
-
-          {/* Metric Cards in Pure White */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="p-5 rounded-2xl bg-white border border-gray-100 shadow-xs flex items-center justify-between">
-              <div>
-                <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Ventas en Bolívares</span>
-                <div className="text-2xl font-black font-mono text-gray-900 mt-1">
-                  Bs. {dailyReport.total_bs.toLocaleString('es-VE', { minimumFractionDigits: 2 })}
-                </div>
-                <div className="text-[11px] text-gray-400 mt-0.5">Ingresos de hoy</div>
-              </div>
-              <div className="w-11 h-11 rounded-xl bg-indigo-50 text-[#074E4A] flex items-center justify-center font-bold">
-                <Coins className="w-5 h-5" />
-              </div>
-            </div>
-
-            <div className="p-5 rounded-2xl bg-white border border-gray-100 shadow-xs flex items-center justify-between">
-              <div>
-                <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Total USD (Tienda)</span>
-                <div className="text-2xl font-black font-mono text-gray-900 mt-1">
-                  ${dailyReport.total_usd_tienda.toFixed(2)}
-                </div>
-                <div className="text-[11px] text-gray-400 mt-0.5">Tasa reposición</div>
-              </div>
-              <div className="w-11 h-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
-                $
-              </div>
-            </div>
-
-            <div className="p-5 rounded-2xl bg-white border border-gray-100 shadow-xs flex items-center justify-between">
-              <div>
-                <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Total USD (BCV)</span>
-                <div className="text-2xl font-black font-mono text-gray-900 mt-1">
-                  ${dailyReport.total_usd_bcv.toFixed(2)}
-                </div>
-                <div className="text-[11px] text-gray-400 mt-0.5">Tasa oficial bancaria</div>
-              </div>
-              <div className="w-11 h-11 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center font-bold">
-                <CreditCard className="w-5 h-5" />
-              </div>
-            </div>
-
-            <div className="p-5 rounded-2xl bg-white border border-gray-100 shadow-xs flex items-center justify-between">
-              <div>
-                <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Tickets Emitidos</span>
-                <div className="text-2xl font-black font-mono text-gray-900 mt-1">
-                  {dailyReport.total_tickets}
-                </div>
-                <div className="text-[11px] text-gray-400 mt-0.5">Operaciones completadas</div>
-              </div>
-              <div className="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
-                <Box className="w-5 h-5" />
-              </div>
-            </div>
-          </div>
-        </div>
+      {activeTab === 'dashboard' && (
+        <DashboardView
+          settings={settings}
+          dailyReport={dailyReport || {}}
+          salesList={salesList}
+          pendingReceivablesUsd={279.50}
+          onNavigate={(view) => setActiveTab(view === 'receivables' ? 'credits' : view)}
+          onOpenRatesModal={() => setIsRatesModalOpen(true)}
+          onInspectSale={(sale) => {
+            fetch(`${API_BASE}/sales/${sale.id}`)
+              .then(res => res.json())
+              .then(data => setPrintedSale(data))
+              .catch(err => console.error(err));
+          }}
+          currentUser={currentUser}
+        />
       )}
 
       {/* ========================================================= */}
