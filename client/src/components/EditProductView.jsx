@@ -106,7 +106,7 @@ export default function EditProductView({
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Buscar por código, proveedor o nombre..."
-            className="w-full pl-9 pr-3 py-1.5 bg-gray-50 border border-gray-200/80 rounded-xl text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#00a884]/20 focus:border-[#00a884]"
+            className="w-full pl-9 pr-3 py-1.5 bg-gray-50 border border-gray-200/80 rounded-xl text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#074E4A]/20 focus:border-[#074E4A]"
           />
         </div>
       </div>
@@ -119,7 +119,7 @@ export default function EditProductView({
             onClick={() => setSelectedCat(cat)}
             className={`px-3 py-1 rounded-xl font-medium whitespace-nowrap transition-all border text-xs cursor-pointer ${
               selectedCat === cat
-                ? 'bg-white border-gray-300 text-[#00a884] font-semibold shadow-xs ring-1 ring-[#00a884]/10'
+                ? 'bg-white border-gray-300 text-[#074E4A] font-semibold shadow-xs ring-1 ring-[#074E4A]/10'
                 : 'bg-white border-gray-200/80 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
             }`}
           >
@@ -268,7 +268,7 @@ export default function EditProductView({
                     <button
                       type="button"
                       onClick={() => onEditProduct(prod)}
-                      className="flex-1 py-1.5 px-2.5 rounded-xl bg-[#00a884] hover:bg-[#008f6f] text-white text-xs font-semibold flex items-center justify-center gap-1 shadow-xs transition-colors cursor-pointer"
+                      className="flex-1 py-1.5 px-2.5 rounded-xl bg-[#074E4A] hover:bg-[#053E3B] text-white text-xs font-semibold flex items-center justify-center gap-1 shadow-xs transition-colors cursor-pointer"
                     >
                       <Pencil className="w-3.5 h-3.5" />
                       <span>Editar</span>

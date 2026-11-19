@@ -38,6 +38,7 @@ export default function QuotesView({
   const [quotes, setQuotes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [modalityFilter, setModalityFilter] = useState('Todas');
 
   // Modals State
   const [selectedQuote, setSelectedQuote] = useState(null);
@@ -536,7 +537,7 @@ export default function QuotesView({
                     value={productSearch}
                     onChange={(e) => setProductSearch(e.target.value)}
                     placeholder="Buscar producto por nombre o código para cotizar..."
-                    className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#00a884]/20 focus:border-[#00a884]"
+                    className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#074E4A]/20 focus:border-[#074E4A]"
                   />
                 </div>
 
@@ -549,7 +550,7 @@ export default function QuotesView({
                       onClick={() => setSelectedCategory(cat)}
                       className={`px-3 py-1 rounded-xl font-medium whitespace-nowrap transition-all border text-xs cursor-pointer ${
                         selectedCategory === cat
-                          ? 'bg-white border-gray-300 text-[#00a884] font-semibold shadow-xs ring-1 ring-[#00a884]/15'
+                          ? 'bg-white border-gray-300 text-[#074E4A] font-semibold shadow-xs ring-1 ring-[#074E4A]/15'
                           : 'bg-white border-gray-200/80 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
                       }`}
                     >
@@ -575,7 +576,7 @@ export default function QuotesView({
                       <div
                         key={prod.id}
                         onClick={() => handleAddProductToQuote(prod)}
-                        className="bg-white rounded-xl border border-gray-100 hover:border-[#00a884]/50 hover:shadow-xs p-2.5 transition-all cursor-pointer flex flex-col justify-between group"
+                        className="bg-white rounded-xl border border-gray-100 hover:border-[#074E4A]/50 hover:shadow-xs p-2.5 transition-all cursor-pointer flex flex-col justify-between group"
                       >
                         <div>
                           <div className="w-full h-24 rounded-lg overflow-hidden bg-gray-50 relative flex items-center justify-center border border-gray-100/60 mb-2">
@@ -594,7 +595,7 @@ export default function QuotesView({
                           <div className="text-[9px] font-bold uppercase tracking-wider text-gray-400">
                             {prod.category}
                           </div>
-                          <h4 className="font-bold text-xs text-gray-900 group-hover:text-[#00a884] transition-colors line-clamp-2 leading-snug mt-0.5">
+                          <h4 className="font-bold text-xs text-gray-900 group-hover:text-[#074E4A] transition-colors line-clamp-2 leading-snug mt-0.5">
                             {prod.name}
                           </h4>
                         </div>
@@ -692,7 +693,7 @@ export default function QuotesView({
                     value={quoteCustomerName}
                     onChange={(e) => setQuoteCustomerName(e.target.value)}
                     placeholder="Cliente Mostrador o seleccionar..."
-                    className="w-full px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#00a884]/20 focus:border-[#00a884]"
+                    className="w-full px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#074E4A]/20 focus:border-[#074E4A]"
                   />
                   <datalist id="quote-customers-list">
                     {customers.map(c => (
@@ -711,7 +712,7 @@ export default function QuotesView({
                       value={quoteCustomerCi}
                       onChange={(e) => setQuoteCustomerCi(e.target.value)}
                       placeholder="Ej: V-12345678"
-                      className="w-full px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#00a884]/20 focus:border-[#00a884]"
+                      className="w-full px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#074E4A]/20 focus:border-[#074E4A]"
                     />
                   </div>
                   <div>
@@ -723,7 +724,7 @@ export default function QuotesView({
                       value={quoteCustomerPhone}
                       onChange={(e) => setQuoteCustomerPhone(e.target.value)}
                       placeholder="Ej: 0414-1234567"
-                      className="w-full px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#00a884]/20 focus:border-[#00a884]"
+                      className="w-full px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#074E4A]/20 focus:border-[#074E4A]"
                     />
                   </div>
                 </div>
@@ -743,7 +744,7 @@ export default function QuotesView({
                         ? 'Solo válido en Divisas (Efectivo / Zelle / Binance)'
                         : 'Válido por 24 horas a tasa oficial BCV'
                     }
-                    className="w-full px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#00a884]/20 focus:border-[#00a884]"
+                    className="w-full px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#074E4A]/20 focus:border-[#074E4A]"
                   />
                 </div>
               </div>
@@ -896,7 +897,7 @@ export default function QuotesView({
                   type="button"
                   onClick={handleSaveAndGeneratePdf}
                   disabled={quoteItems.length === 0 || isSubmitting}
-                  className="w-full bg-[#00a884] hover:bg-[#008f6f] active:scale-98 text-white font-bold py-3 px-4 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 text-xs sm:text-sm disabled:opacity-50 cursor-pointer"
+                  className="w-full bg-[#074E4A] hover:bg-[#053E3B] active:scale-98 text-white font-bold py-3 px-4 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 text-xs sm:text-sm disabled:opacity-50 cursor-pointer"
                 >
                   <Download className="w-4 h-4" />
                   <span>{isSubmitting ? 'Generando...' : '📄 Guardar y Generar PDF'}</span>
@@ -909,29 +910,31 @@ export default function QuotesView({
         /* ========================================================= */
         /* 2. MODO: LISTADO PRINCIPAL DE PRESUPUESTOS & COTIZACIONES  */
         /* ========================================================= */
-        <div className="space-y-4">
-          {/* Header Bar */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-5 shadow-xs flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
+        <div className="flex flex-col gap-6">
+          {/* Header Bar — Estilo Deep Teal Ferretería Hebert */}
+          <div className="card-surface p-5 sm:p-6 flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-11 h-11 rounded-2xl bg-[#E6F7F5] text-[#074E4A] flex items-center justify-center shrink-0">
                 <FileText className="w-5 h-5" />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-gray-900 tracking-tight">Presupuestos & Cotizaciones</h2>
-                <p className="text-xs text-gray-400">
-                  Cotizaciones formales en Divisas, Bolívares (24h), BCV y Cashea con PDF y WhatsApp con 1 clic
+                <h2 className="font-display font-bold text-[19px] text-[#111827]">
+                  Presupuestos & Cotizaciones
+                </h2>
+                <p className="text-xs sm:text-[13px] text-slate-400 mt-0.5">
+                  Cotizaciones formales en Divisas, Bolívares (24h), BCV y Cashea con carga directa a caja
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5">
               <button
                 type="button"
                 onClick={() => {
                   setCurrencyMode('bolivares');
                   setIsCreatingQuote(true);
                 }}
-                className="bg-[#00a884] hover:bg-[#008f6f] text-white font-bold px-4 py-2.5 rounded-xl text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                className="px-4 py-2.5 rounded-xl bg-[#074E4A] hover:bg-[#053E3B] text-white text-xs font-semibold flex items-center gap-2 transition-colors whitespace-nowrap shadow-xs cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
                 <span>+ Nueva Cotización</span>
@@ -940,7 +943,7 @@ export default function QuotesView({
               <button
                 type="button"
                 onClick={fetchQuotes}
-                className="p-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-600 transition-colors cursor-pointer"
+                className="p-2.5 rounded-xl bg-[#F4F6F8] hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer"
                 title="Actualizar presupuestos"
               >
                 <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -948,169 +951,203 @@ export default function QuotesView({
             </div>
           </div>
 
-          {/* Search Bar */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-3.5 shadow-xs flex items-center gap-3">
-            <div className="relative flex-1">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          {/* Search Bar & Modality Filter Tabs */}
+          <div className="card-surface p-4 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+            <div className="relative flex-1 min-w-[240px]">
+              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
               <input
-                type="text"
+                type="search"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Buscar presupuesto por número de cotización, cliente o teléfono..."
-                className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200/80 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#00a884]/20 focus:border-[#00a884]"
+                className="w-full pl-10 pr-4 py-2 bg-[#F6F8FA] focus:bg-white text-[13px] text-[#111827] placeholder:text-slate-400 rounded-xl border border-transparent focus:border-[#074E4A]/30 focus:outline-none transition-colors"
               />
+            </div>
+
+            {/* Filter Pills: Todas, Bs. (24h), Divisas ($), BCV, Cashea */}
+            <div className="flex flex-wrap items-center gap-1 bg-[#F4F6F8] p-1 rounded-xl self-start md:self-auto">
+              {['Todas', 'Bs. (24h)', 'Divisas ($)', 'BCV', 'Cashea'].map((mod) => (
+                <button
+                  key={mod}
+                  type="button"
+                  onClick={() => setModalityFilter(mod)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${
+                    modalityFilter === mod
+                      ? 'bg-white text-[#111827] shadow-xs'
+                      : 'text-slate-500 hover:text-[#111827]'
+                  }`}
+                >
+                  {mod}
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* Quotes Table */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-xs overflow-hidden">
+          {/* Quotes Table — Idéntica a Screenshot 2 */}
+          <div className="card-surface overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs text-gray-700">
-                <thead className="bg-gray-50/75 border-b border-gray-100 text-[10px] uppercase font-bold text-gray-400">
-                  <tr>
-                    <th className="py-3 px-4">Cotización #</th>
-                    <th className="py-3 px-4">Cliente</th>
-                    <th className="py-3 px-4">Fecha</th>
-                    <th className="py-3 px-4 text-center">Artículos</th>
-                    <th className="py-3 px-4 text-right">Total ($)</th>
-                    <th className="py-3 px-4 text-right">Total (Bs.)</th>
-                    <th className="py-3 px-4 text-center">Modalidad</th>
-                    <th className="py-3 px-4 text-right">Acciones</th>
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-100 bg-[#FAFBFC] text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                    <th className="py-3.5 pl-6 pr-3">Cotización #</th>
+                    <th className="py-3.5 px-3">Cliente</th>
+                    <th className="py-3.5 px-3">Fecha</th>
+                    <th className="py-3.5 px-3 text-center">Artículos</th>
+                    <th className="py-3.5 px-3 text-right">Total ($)</th>
+                    <th className="py-3.5 px-3 text-right">Total (Bs.)</th>
+                    <th className="py-3.5 px-3 text-center">Modalidad</th>
+                    <th className="py-3.5 pl-3 pr-6 text-right">Acciones</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100 font-medium">
-                  {quotes.length === 0 ? (
+                <tbody className="divide-y divide-slate-100 text-[13px]">
+                  {quotes.filter((q) => {
+                    const mode = q.currency_mode || (q.is_cashea ? 'cashea' : 'bolivares');
+                    if (modalityFilter === 'Bs. (24h)') return mode === 'bolivares';
+                    if (modalityFilter === 'Divisas ($)') return mode === 'divisas';
+                    if (modalityFilter === 'BCV') return mode === 'bcv';
+                    if (modalityFilter === 'Cashea') return mode === 'cashea' || q.is_cashea === 1;
+                    return true;
+                  }).length === 0 ? (
                     <tr>
-                      <td colSpan="8" className="py-16 text-center text-gray-400">
-                        <FileText className="w-10 h-10 mx-auto text-gray-300 mb-2" />
-                        <p className="text-sm font-semibold text-gray-600 mb-1">No hay presupuestos guardados aún</p>
-                        <p className="text-xs text-gray-400 mb-3">Crea una cotización formal seleccionando productos del catálogo</p>
+                      <td colSpan="8" className="py-16 text-center text-slate-400">
+                        <FileText className="w-10 h-10 mx-auto text-slate-300 mb-2" />
+                        <p className="font-display font-semibold text-[#111827] mb-1">No hay presupuestos guardados aún</p>
+                        <p className="text-xs text-slate-400 mb-4">Crea una cotización formal seleccionando productos del catálogo o desde el Punto de Venta.</p>
                         <button
                           type="button"
                           onClick={() => {
                             setCurrencyMode('bolivares');
                             setIsCreatingQuote(true);
                           }}
-                          className="px-4 py-2 bg-[#00a884] hover:bg-[#008f6f] text-white font-bold rounded-xl text-xs inline-flex items-center gap-1.5 shadow-xs cursor-pointer transition-all"
+                          className="px-4 py-2.5 bg-[#074E4A] hover:bg-[#053E3B] text-white font-semibold rounded-xl text-xs inline-flex items-center gap-2 shadow-xs cursor-pointer transition-colors"
                         >
                           <Plus className="w-4 h-4" />
-                          <span>+ Crear Primera Cotización</span>
+                          <span>+ Crear Cotización Formal</span>
                         </button>
                       </td>
                     </tr>
                   ) : (
-                    quotes.map((q) => {
+                    quotes.filter((q) => {
                       const mode = q.currency_mode || (q.is_cashea ? 'cashea' : 'bolivares');
+                      if (modalityFilter === 'Bs. (24h)') return mode === 'bolivares';
+                      if (modalityFilter === 'Divisas ($)') return mode === 'divisas';
+                      if (modalityFilter === 'BCV') return mode === 'bcv';
+                      if (modalityFilter === 'Cashea') return mode === 'cashea' || q.is_cashea === 1;
+                      return true;
+                    }).map((q) => {
+                      const mode = q.currency_mode || (q.is_cashea ? 'cashea' : 'bolivares');
+                      const dateObj = new Date(q.created_at);
+                      const dateStr = !isNaN(dateObj)
+                        ? `${dateObj.toLocaleDateString('es-VE')} ${dateObj.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })}`
+                        : q.created_at;
 
                       return (
-                        <tr key={q.id} className="hover:bg-gray-50/60 transition-colors">
-                          <td className="py-3 px-4 font-mono font-bold text-indigo-700">
+                        <tr key={q.id} className="hover:bg-[#F7FAF9] transition-colors">
+                          <td className="py-4 pl-6 pr-3 font-mono-num font-bold text-[#074E4A] whitespace-nowrap">
                             {q.quote_number}
                           </td>
 
-                          <td className="py-3 px-4">
-                            <div className="font-bold text-gray-900">{q.customer_name}</div>
+                          <td className="py-4 px-3">
+                            <p className="font-semibold text-[#111827]">{q.customer_name}</p>
                             {q.customer_phone && (
-                              <div className="text-[10px] text-gray-400 flex items-center gap-1">
-                                <Phone className="w-3 h-3 text-emerald-600" />
-                                <span>{q.customer_phone}</span>
-                              </div>
+                              <p className="text-[11.5px] font-mono-num text-slate-400">
+                                Tel: {q.customer_phone}
+                              </p>
                             )}
                           </td>
 
-                          <td className="py-3 px-4 text-gray-500 whitespace-nowrap">
-                            {new Date(q.created_at).toLocaleDateString('es-VE')} {new Date(q.created_at).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })}
+                          <td className="py-4 px-3 text-slate-500 text-xs whitespace-nowrap">
+                            {dateStr}
                           </td>
 
-                          <td className="py-3 px-4 text-center">
-                            <span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 font-bold text-[10px]">
+                          <td className="py-4 px-3 text-center whitespace-nowrap">
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-[#F4F6F8] font-mono-num text-xs font-semibold text-slate-600">
                               {q.items?.length || 0} ítems
                             </span>
                           </td>
 
-                          <td className="py-3 px-4 text-right font-mono font-bold text-gray-900">
-                            ${q.total_usd.toFixed(2)}
+                          <td className="py-4 px-3 text-right font-mono-num font-bold text-[#111827] whitespace-nowrap">
+                            ${Number(q.total_usd).toFixed(2)}
                           </td>
 
-                          <td className="py-3 px-4 text-right font-mono font-bold text-[#00a884]">
+                          <td className="py-4 px-3 text-right font-mono-num font-semibold text-[#074E4A] whitespace-nowrap">
                             {mode === 'divisas' ? (
-                              <span className="text-gray-400 font-normal">Solo Divisas</span>
+                              <span className="text-slate-400 font-normal">Solo Divisas</span>
                             ) : (
-                              `Bs. ${q.total_bs.toLocaleString('es-VE', { minimumFractionDigits: 2 })}`
+                              `Bs. ${Number(q.total_bs).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                             )}
                           </td>
 
-                          <td className="py-3 px-4 text-center">
+                          <td className="py-4 px-3 text-center whitespace-nowrap">
                             {mode === 'divisas' ? (
-                              <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[10px] border border-emerald-200">
-                                💵 Divisas ($)
+                              <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[11.5px] font-semibold bg-[#E6F7F5] text-[#074E4A]">
+                                Divisas ($)
                               </span>
                             ) : mode === 'bcv' ? (
-                              <span className="px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 font-bold text-[10px] border border-indigo-200">
-                                🏦 USD BCV
+                              <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[11.5px] font-semibold bg-[#E6F7F5] text-[#074E4A]">
+                                BCV
                               </span>
                             ) : mode === 'cashea' ? (
-                              <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 font-bold text-[10px] border border-purple-200">
-                                🟣 Cashea
+                              <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[11.5px] font-semibold bg-indigo-50 text-indigo-600">
+                                Cashea
                               </span>
                             ) : (
-                              <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 font-bold text-[10px] border border-rose-200">
-                                ⏳ Bs. (24h)
+                              <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[11.5px] font-semibold bg-rose-50 text-rose-600">
+                                Bs. (24h)
                               </span>
                             )}
                           </td>
 
-                          <td className="py-3 px-4 text-right whitespace-nowrap">
-                            <div className="flex items-center justify-end gap-1">
-                              {/* Ver Detalle / Proforma */}
+                          <td className="py-4 pl-3 pr-6 text-right whitespace-nowrap">
+                            <div className="flex items-center justify-end gap-1.5">
+                              {/* Ver Detalle */}
                               <button
                                 type="button"
                                 onClick={() => setSelectedQuote(q)}
-                                className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-100 text-gray-600 transition-colors cursor-pointer"
-                                title="Ver detalle formal"
+                                aria-label={`Ver detalle de ${q.quote_number}`}
+                                className="w-8 h-8 rounded-lg bg-[#F4F6F8] hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors cursor-pointer"
                               >
-                                <Eye className="w-3.5 h-3.5" />
+                                <Eye className="w-4 h-4" />
                               </button>
 
                               {/* Descargar PDF */}
                               <button
                                 type="button"
                                 onClick={() => generateQuotePdf(q, settings, 'download')}
-                                className="p-1.5 rounded-lg border border-gray-200 bg-white hover:bg-indigo-50 text-indigo-600 transition-colors cursor-pointer"
-                                title="Descargar PDF formal"
+                                aria-label={`Descargar ${q.quote_number}`}
+                                className="w-8 h-8 rounded-lg bg-[#F4F6F8] hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors cursor-pointer"
                               >
-                                <Download className="w-3.5 h-3.5" />
+                                <Download className="w-4 h-4" />
                               </button>
 
                               {/* WhatsApp */}
                               <button
                                 type="button"
                                 onClick={() => handleShareWhatsApp(q)}
-                                className="p-1.5 rounded-lg border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-colors cursor-pointer"
-                                title="Enviar por WhatsApp"
+                                aria-label={`Compartir ${q.quote_number} por WhatsApp`}
+                                className="w-8 h-8 rounded-lg bg-[#E6F7F5] hover:bg-[#D1F0EC] text-[#074E4A] flex items-center justify-center transition-colors cursor-pointer"
                               >
-                                <MessageCircle className="w-3.5 h-3.5" />
+                                <MessageCircle className="w-4 h-4" />
                               </button>
 
-                              {/* Cargar a Caja */}
+                              {/* Cargar al Carrito */}
                               <button
                                 type="button"
                                 onClick={() => handleLoadToCart(q)}
-                                className="px-2.5 py-1.5 bg-[#00a884] hover:bg-[#008f6f] text-white font-bold rounded-lg text-xs flex items-center gap-1 shadow-2xs transition-colors cursor-pointer"
-                                title="Cargar estos artículos al carrito del Punto de Venta"
+                                className="px-3 py-1.5 rounded-lg bg-[#074E4A] hover:bg-[#053E3B] text-white text-xs font-semibold flex items-center gap-1.5 transition-colors whitespace-nowrap cursor-pointer shadow-xs"
                               >
-                                <ShoppingCart className="w-3 h-3" />
-                                <span className="hidden sm:inline">Cargar</span>
+                                <ShoppingCart className="w-3.5 h-3.5" />
+                                <span>Cargar</span>
                               </button>
 
                               {/* Eliminar */}
                               <button
                                 type="button"
                                 onClick={() => setDeleteConfirm(q)}
-                                className="p-1.5 rounded-lg border border-rose-100 hover:bg-rose-50 text-rose-500 transition-colors cursor-pointer"
-                                title="Eliminar presupuesto"
+                                aria-label={`Eliminar ${q.quote_number}`}
+                                className="w-8 h-8 rounded-lg bg-rose-50/70 hover:bg-rose-100 text-rose-500 flex items-center justify-center transition-colors cursor-pointer"
                               >
-                                <Trash2 className="w-3.5 h-3.5" />
+                                <Trash2 className="w-4 h-4" />
                               </button>
                             </div>
                           </td>
@@ -1189,7 +1226,7 @@ export default function QuotesView({
                     <p className="text-[11px] text-gray-400">{settings?.company_address || ''}</p>
                   </div>
                   <div className="text-right">
-                    <span className="px-2.5 py-1 rounded-lg bg-emerald-50 text-[#00a884] font-black text-xs">
+                    <span className="px-2.5 py-1 rounded-lg bg-emerald-50 text-[#074E4A] font-black text-xs">
                       COTIZACIÓN FORMAL
                     </span>
                     <div className="font-mono font-bold text-gray-900 mt-1">
@@ -1315,7 +1352,7 @@ export default function QuotesView({
                         <span>Total USD BCV:</span>
                         <span>${Number(selectedQuote.total_usd).toFixed(2)}</span>
                       </div>
-                      <div className="flex justify-between font-bold text-[#00a884] pt-1 border-t border-gray-200">
+                      <div className="flex justify-between font-bold text-[#074E4A] pt-1 border-t border-gray-200">
                         <span>Total en Bolívares:</span>
                         <span>Bs. {Number(selectedQuote.total_bs).toLocaleString('es-VE', { minimumFractionDigits: 2 })}</span>
                       </div>
@@ -1384,7 +1421,7 @@ export default function QuotesView({
                     handleLoadToCart(selectedQuote);
                     setSelectedQuote(null);
                   }}
-                  className="py-2.5 px-4 bg-[#00a884] hover:bg-[#008f6f] text-white font-bold rounded-xl flex items-center justify-center gap-1.5 text-xs shadow-xs cursor-pointer transition-colors"
+                  className="py-2.5 px-4 bg-[#074E4A] hover:bg-[#053E3B] text-white font-bold rounded-xl flex items-center justify-center gap-1.5 text-xs shadow-xs cursor-pointer transition-colors"
                 >
                   <ShoppingCart className="w-4 h-4" />
                   <span>Cargar a Caja</span>

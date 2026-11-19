@@ -715,7 +715,7 @@ export default function App() {
                 </div>
                 <div className="text-[11px] text-gray-400 mt-0.5">Ingresos de hoy</div>
               </div>
-              <div className="w-11 h-11 rounded-xl bg-indigo-50 text-[#4f46e5] flex items-center justify-center font-bold">
+              <div className="w-11 h-11 rounded-xl bg-indigo-50 text-[#074E4A] flex items-center justify-center font-bold">
                 <Coins className="w-5 h-5" />
               </div>
             </div>
@@ -819,13 +819,13 @@ export default function App() {
                     fetchProducts(e.target.value);
                   }}
                   placeholder="Buscar producto o código..."
-                  className="pl-10 pr-4 py-2 bg-gray-50 border border-gray-200/80 rounded-xl text-xs text-gray-800 w-64 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/15 focus:border-[#4f46e5]"
+                  className="pl-10 pr-4 py-2 bg-gray-50 border border-gray-200/80 rounded-xl text-xs text-gray-800 w-64 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#074E4A]/15 focus:border-[#074E4A]"
                 />
               </div>
 
               <button
                 onClick={() => handleOpenProductModal(null)}
-                className="bg-[#4f46e5] hover:bg-[#4338ca] text-white font-semibold px-4 py-2 rounded-xl text-xs flex items-center gap-2 shadow-xs transition-all"
+                className="bg-[#074E4A] hover:bg-[#053E3B] text-white font-semibold px-4 py-2 rounded-xl text-xs flex items-center gap-2 shadow-xs transition-all"
               >
                 <Plus className="w-4 h-4" />
                 <span>Nuevo Producto</span>
@@ -846,7 +846,7 @@ export default function App() {
                   <th className="pb-3 text-right">Costo USD</th>
                   <th className="pb-3 text-right text-gray-700">USD Tienda</th>
                   <th className="pb-3 text-right text-emerald-600">Precio Bolívares</th>
-                  <th className="pb-3 text-right text-[#4f46e5]">USD BCV</th>
+                  <th className="pb-3 text-right text-[#074E4A]">USD BCV</th>
                   <th className="pb-3 text-center">Acciones</th>
                 </tr>
               </thead>
@@ -891,7 +891,7 @@ export default function App() {
                     <td className="py-3 text-right font-mono font-black text-emerald-600">
                       Bs. {p.price_bs.toLocaleString('es-VE', { minimumFractionDigits: 2 })}
                     </td>
-                    <td className="py-3 text-right font-mono font-bold text-[#4f46e5]">
+                    <td className="py-3 text-right font-mono font-bold text-[#074E4A]">
                       ${p.price_usd_bcv.toFixed(2)}
                     </td>
                     <td className="py-3 text-center">
@@ -908,7 +908,7 @@ export default function App() {
                         </button>
                         <button
                           onClick={() => handleOpenProductModal(p)}
-                          className="p-1.5 text-gray-400 hover:text-[#4f46e5] hover:bg-indigo-50 rounded-lg transition-colors"
+                          className="p-1.5 text-gray-400 hover:text-[#074E4A] hover:bg-indigo-50 rounded-lg transition-colors"
                           title="Editar"
                         >
                           <Edit className="w-4 h-4" />
@@ -934,82 +934,101 @@ export default function App() {
       {/* VISTA 4: HISTORIAL DE VENTAS                              */}
       {/* ========================================================= */}
       {activeTab === 'sales' && (
-        <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-5 space-y-4 shadow-xs max-w-[1720px] mx-auto">
-          <div className="flex items-center justify-between pb-4 border-b border-gray-100">
-            <div>
-              <h2 className="text-xl font-bold text-gray-900 tracking-tight">Historial de Facturación</h2>
-              <p className="text-xs text-gray-400 mt-0.5">Registro de operaciones con reimpresión de comprobante 58mm</p>
+        <div className="flex flex-col gap-6 max-w-[1720px] mx-auto pb-10">
+          {/* Header Card — Estilo Deep Teal Ferretería Hebert */}
+          <div className="card-surface p-5 sm:p-6 flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-11 h-11 rounded-2xl bg-[#F2F7F6] text-[#074E4A] flex items-center justify-center shrink-0">
+                <Receipt className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="font-display font-bold text-[19px] text-[#111827]">
+                  Historial de Facturación
+                </h2>
+                <p className="text-xs sm:text-[13px] text-slate-400 mt-0.5">
+                  Registro de operaciones con reimpresión de comprobante 58mm
+                </p>
+              </div>
             </div>
             <button
               onClick={fetchSales}
-              className="px-4 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-xl text-xs font-semibold flex items-center gap-2 border border-gray-200"
+              className="px-4 py-2.5 rounded-xl bg-[#F4F6F8] hover:bg-slate-200/80 text-slate-700 text-xs font-semibold flex items-center gap-2 transition-colors cursor-pointer"
             >
-              <RefreshCw className="w-3.5 h-3.5 text-[#4f46e5]" />
+              <RefreshCw className="w-3.5 h-3.5 text-[#074E4A]" />
               <span>Actualizar</span>
             </button>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-gray-100 text-[11px] font-bold text-gray-400 uppercase tracking-wider">
-                  <th className="pb-3 pl-2">Ticket</th>
-                  <th className="pb-3">Fecha</th>
-                  <th className="pb-3">Cliente</th>
-                  <th className="pb-3">Forma de Pago</th>
-                  <th className="pb-3 text-right">USD Tienda</th>
-                  <th className="pb-3 text-right text-emerald-600">Total Bolívares</th>
-                  <th className="pb-3 text-right text-[#4f46e5]">USD BCV</th>
-                  <th className="pb-3 text-center">Ticket 58mm</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {salesList.length === 0 ? (
-                  <tr>
-                    <td colSpan="8" className="py-12 text-center text-gray-400">
-                      No hay ventas registradas aún
-                    </td>
+          {/* Table Card — Idéntica a Screenshot 3 */}
+          <div className="card-surface overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-100 bg-[#FAFBFC] text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                    <th className="py-3.5 pl-6 pr-3">Ticket #</th>
+                    <th className="py-3.5 px-3">Fecha</th>
+                    <th className="py-3.5 px-3">Cliente</th>
+                    <th className="py-3.5 px-3">Forma de Pago</th>
+                    <th className="py-3.5 px-3 text-right">USD Tienda</th>
+                    <th className="py-3.5 px-3 text-right">Total Bolívares</th>
+                    <th className="py-3.5 px-3 text-right">USD BCV</th>
+                    <th className="py-3.5 pl-3 pr-6 text-center">Acciones</th>
                   </tr>
-                ) : (
-                  salesList.map(sale => (
-                    <tr key={sale.id} className="hover:bg-gray-50/80 transition-colors">
-                      <td className="py-3 pl-2 font-mono font-bold text-gray-900">{sale.sale_number}</td>
-                      <td className="py-3 text-gray-500 font-mono">
-                        {new Date(sale.created_at).toLocaleString('es-VE')}
-                      </td>
-                      <td className="py-3 font-semibold text-gray-900">{sale.customer_name}</td>
-                      <td className="py-3">
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-gray-100 text-gray-700">
-                          {sale.notes || sale.payment_method}
-                        </span>
-                      </td>
-                      <td className="py-3 text-right font-mono font-bold text-gray-900">
-                        ${sale.total_usd_tienda.toFixed(2)}
-                      </td>
-                      <td className="py-3 text-right font-mono font-black text-emerald-600">
-                        Bs. {sale.total_bs.toLocaleString('es-VE', { minimumFractionDigits: 2 })}
-                      </td>
-                      <td className="py-3 text-right font-mono font-bold text-[#4f46e5]">
-                        ${sale.total_usd_bcv.toFixed(2)}
-                      </td>
-                      <td className="py-3 text-center">
-                        <button
-                          onClick={async () => {
-                            const res = await fetch(`${API_BASE}/sales/${sale.id}`);
-                            const data = await res.json();
-                            setPrintedSale(data);
-                          }}
-                          className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium inline-flex items-center gap-1.5 transition-colors"
-                        >
-                          <Printer className="w-3.5 h-3.5" />
-                          <span>Reimprimir</span>
-                        </button>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-[13px]">
+                  {salesList.length === 0 ? (
+                    <tr>
+                      <td colSpan="8" className="py-16 text-center text-slate-400">
+                        <Receipt className="w-10 h-10 mx-auto text-slate-300 mb-2" />
+                        <p className="font-display font-semibold text-[#111827] mb-1">No hay ventas registradas aún</p>
+                        <p className="text-xs text-slate-400">Las operaciones facturadas en el Punto de Venta aparecerán aquí.</p>
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ) : (
+                    salesList.map(sale => (
+                      <tr key={sale.id} className="hover:bg-[#F7FAF9] transition-colors">
+                        <td className="py-4 pl-6 pr-3 font-mono-num font-bold text-[#074E4A] whitespace-nowrap">
+                          {sale.sale_number}
+                        </td>
+                        <td className="py-4 px-3 text-slate-500 text-xs font-mono-num whitespace-nowrap">
+                          {new Date(sale.created_at).toLocaleString('es-VE', { dateStyle: 'short', timeStyle: 'short' })}
+                        </td>
+                        <td className="py-4 px-3 font-semibold text-[#111827]">
+                          {sale.customer_name}
+                        </td>
+                        <td className="py-4 px-3">
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-[#F4F6F8] text-slate-700">
+                            {sale.notes || sale.payment_method}
+                          </span>
+                        </td>
+                        <td className="py-4 px-3 text-right font-mono-num font-bold text-[#111827] whitespace-nowrap">
+                          ${sale.total_usd_tienda.toFixed(2)}
+                        </td>
+                        <td className="py-4 px-3 text-right font-mono-num font-semibold text-[#074E4A] whitespace-nowrap">
+                          Bs. {sale.total_bs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </td>
+                        <td className="py-4 px-3 text-right font-mono-num font-semibold text-indigo-600 whitespace-nowrap">
+                          ${sale.total_usd_bcv.toFixed(2)}
+                        </td>
+                        <td className="py-4 pl-3 pr-6 text-center whitespace-nowrap">
+                          <button
+                            onClick={async () => {
+                              const res = await fetch(`${API_BASE}/sales/${sale.id}`);
+                              const data = await res.json();
+                              setPrintedSale(data);
+                            }}
+                            className="px-3 py-1.5 bg-[#074E4A] hover:bg-[#053E3B] text-white rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                          >
+                            <Printer className="w-3.5 h-3.5" />
+                            <span>58mm</span>
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
@@ -1080,7 +1099,7 @@ export default function App() {
                 type="text"
                 value={settings.store_name}
                 onChange={(e) => setSettings({ ...settings, store_name: e.target.value })}
-                className="w-full p-2.5 bg-gray-50 border border-gray-200/80 rounded-xl text-gray-900 font-bold focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/15 focus:border-[#4f46e5]"
+                className="w-full p-2.5 bg-gray-50 border border-gray-200/80 rounded-xl text-gray-900 font-bold focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#074E4A]/15 focus:border-[#074E4A]"
               />
             </div>
 
@@ -1090,7 +1109,7 @@ export default function App() {
                 type="text"
                 value={settings.rif}
                 onChange={(e) => setSettings({ ...settings, rif: e.target.value })}
-                className="w-full p-2.5 bg-gray-50 border border-gray-200/80 rounded-xl text-gray-900 font-mono focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/15 focus:border-[#4f46e5]"
+                className="w-full p-2.5 bg-gray-50 border border-gray-200/80 rounded-xl text-gray-900 font-mono focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#074E4A]/15 focus:border-[#074E4A]"
               />
             </div>
 
@@ -1100,7 +1119,7 @@ export default function App() {
                 type="text"
                 value={settings.phone}
                 onChange={(e) => setSettings({ ...settings, phone: e.target.value })}
-                className="w-full p-2.5 bg-gray-50 border border-gray-200/80 rounded-xl text-gray-900 font-mono focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/15 focus:border-[#4f46e5]"
+                className="w-full p-2.5 bg-gray-50 border border-gray-200/80 rounded-xl text-gray-900 font-mono focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#074E4A]/15 focus:border-[#074E4A]"
               />
             </div>
 
@@ -1110,7 +1129,7 @@ export default function App() {
                 type="text"
                 value={settings.address}
                 onChange={(e) => setSettings({ ...settings, address: e.target.value })}
-                className="w-full p-2.5 bg-gray-50 border border-gray-200/80 rounded-xl text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/15 focus:border-[#4f46e5]"
+                className="w-full p-2.5 bg-gray-50 border border-gray-200/80 rounded-xl text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#074E4A]/15 focus:border-[#074E4A]"
               />
             </div>
 
@@ -1120,14 +1139,14 @@ export default function App() {
                 type="text"
                 value={settings.receipt_footer}
                 onChange={(e) => setSettings({ ...settings, receipt_footer: e.target.value })}
-                className="w-full p-2.5 bg-gray-50 border border-gray-200/80 rounded-xl text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/15 focus:border-[#4f46e5]"
+                className="w-full p-2.5 bg-gray-50 border border-gray-200/80 rounded-xl text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#074E4A]/15 focus:border-[#074E4A]"
               />
             </div>
           </div>
 
           <div className="p-4 rounded-xl bg-gray-50 border border-gray-100 text-xs space-y-1">
             <div className="font-bold text-gray-900 flex items-center gap-1.5">
-              <Smartphone className="w-4 h-4 text-[#4f46e5]" />
+              <Smartphone className="w-4 h-4 text-[#074E4A]" />
               <span>Conexión para 2da PC y Celular en Red Local</span>
             </div>
             <p className="text-gray-500">
@@ -1147,7 +1166,7 @@ export default function App() {
               });
               showToast('¡Configuración guardada!');
             }}
-            className="bg-[#4f46e5] hover:bg-[#4338ca] text-white font-semibold px-6 py-2.5 rounded-xl text-xs transition-all shadow-xs"
+            className="bg-[#074E4A] hover:bg-[#053E3B] text-white font-semibold px-6 py-2.5 rounded-xl text-xs transition-all shadow-xs"
           >
             Guardar Ajustes
           </button>
@@ -1220,7 +1239,7 @@ export default function App() {
               </button>
               <button
                 onClick={handleSaveRates}
-                className="flex-1 py-2.5 bg-[#4f46e5] hover:bg-[#4338ca] text-white font-semibold text-xs rounded-xl shadow-xs"
+                className="flex-1 py-2.5 bg-[#074E4A] hover:bg-[#053E3B] text-white font-semibold text-xs rounded-xl shadow-xs"
               >
                 Actualizar Tasas
               </button>
@@ -1261,7 +1280,7 @@ export default function App() {
                 min="0.01"
                 value={decimalQtyInput}
                 onChange={(e) => setDecimalQtyInput(e.target.value)}
-                className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-lg font-mono font-bold text-center text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/15 focus:border-[#4f46e5]"
+                className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-lg font-mono font-bold text-center text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#074E4A]/15 focus:border-[#074E4A]"
                 autoFocus
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') addToCart(decimalItemModal, decimalQtyInput);
@@ -1290,7 +1309,7 @@ export default function App() {
               </button>
               <button
                 onClick={() => addToCart(decimalItemModal, decimalQtyInput)}
-                className="flex-1 py-2 bg-[#4f46e5] hover:bg-[#4338ca] text-white font-semibold text-xs rounded-xl shadow-xs"
+                className="flex-1 py-2 bg-[#074E4A] hover:bg-[#053E3B] text-white font-semibold text-xs rounded-xl shadow-xs"
               >
                 Agregar a Orden
               </button>
@@ -2030,7 +2049,7 @@ export default function App() {
               </button>
               <button
                 onClick={handlePrint}
-                className="flex-1 py-2 bg-[#4f46e5] hover:bg-[#4338ca] text-white font-semibold text-xs rounded-xl shadow-xs flex items-center justify-center gap-1.5"
+                className="flex-1 py-2 bg-[#074E4A] hover:bg-[#053E3B] text-white font-semibold text-xs rounded-xl shadow-xs flex items-center justify-center gap-1.5"
               >
                 <Printer className="w-4 h-4" />
                 <span>Imprimir 58mm</span>
@@ -2132,7 +2151,7 @@ export default function App() {
                       value={productImagePreview}
                       onChange={(e) => setProductImagePreview(e.target.value)}
                       placeholder="https://... enlace de la imagen"
-                      className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/15 focus:border-[#4f46e5]"
+                      className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#074E4A]/15 focus:border-[#074E4A]"
                     />
                   </div>
                 </div>
@@ -2192,7 +2211,7 @@ export default function App() {
                       type="checkbox"
                       name="allow_decimals"
                       defaultChecked={editingProduct ? Boolean(editingProduct.allow_decimals) : false}
-                      className="w-4 h-4 text-[#4f46e5] rounded border-gray-300"
+                      className="w-4 h-4 text-[#074E4A] rounded border-gray-300"
                     />
                     <span className="font-medium text-gray-700">Venta Fraccionada (0.5 kg, 2.5 m)</span>
                   </label>
@@ -2324,7 +2343,7 @@ export default function App() {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2 bg-[#4f46e5] hover:bg-[#4338ca] text-white font-semibold rounded-xl shadow-xs"
+                  className="flex-1 py-2 bg-[#074E4A] hover:bg-[#053E3B] text-white font-semibold rounded-xl shadow-xs"
                 >
                   Guardar Producto
                 </button>
@@ -2364,7 +2383,7 @@ export default function App() {
                 value={stockAdjustQty}
                 onChange={(e) => setStockAdjustQty(e.target.value)}
                 placeholder="Ej: 10 o -3"
-                className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl font-mono text-center font-bold text-base text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/15 focus:border-[#4f46e5]"
+                className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl font-mono text-center font-bold text-base text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#074E4A]/15 focus:border-[#074E4A]"
                 autoFocus
               />
             </div>
@@ -2390,7 +2409,7 @@ export default function App() {
                   fetchProducts();
                   fetchDailyReport();
                 }}
-                className="flex-1 py-2 bg-[#4f46e5] hover:bg-[#4338ca] text-white font-semibold text-xs rounded-xl shadow-xs"
+                className="flex-1 py-2 bg-[#074E4A] hover:bg-[#053E3B] text-white font-semibold text-xs rounded-xl shadow-xs"
               >
                 Aplicar Ajuste
               </button>
@@ -2537,3 +2556,4 @@ export default function App() {
     </MainLayout>
   );
 }
+

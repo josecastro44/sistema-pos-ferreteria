@@ -1,69 +1,137 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   TrendingUp,
   DollarSign,
+  Scale,
+  CheckCircle2,
+  Lock,
+  Printer,
+  MessageCircle,
+  Search,
+  Banknote,
+  Building2,
   Coins,
   Smartphone,
   CreditCard,
-  Printer,
+  Wallet,
   Calendar,
   RefreshCw,
-  ArrowUpRight,
-  ShieldCheck,
-  Scale,
-  Search,
-  Filter,
-  CheckCircle2,
-  AlertTriangle,
-  Lock,
-  ChevronDown,
-  MessageCircle
+  AlertTriangle
 } from 'lucide-react';
 
-export default function FinancesView({ settings, currentUser }) {
-  // Preset date filter: 'today', 'yesterday', 'this_week', 'this_month', 'custom'
-  const [datePreset, setDatePreset] = useState('today');
+const PAYMENT_CHANNELS = [
+  {
+    key: 'efectivo_usd',
+    title: 'Efectivo USD',
+    subtitle: 'Billetes en gaveta',
+    currency: 'USD',
+    accent: 'bg-emerald-50 text-[#074E4A]',
+    Icon: Banknote,
+  },
+  {
+    key: 'zelle_usd',
+    title: 'Zelle',
+    subtitle: 'Transferencias USD',
+    currency: 'USD',
+    accent: 'bg-indigo-50 text-indigo-600',
+    Icon: Building2,
+  },
+  {
+    key: 'binance_usd',
+    title: 'Binance / USDT',
+    subtitle: 'Cripto / P2P',
+    currency: 'USD',
+    accent: 'bg-amber-50 text-amber-600',
+    Icon: Coins,
+  },
+  {
+    key: 'cashea',
+    title: 'Cashea (+15%)',
+    subtitle: 'Inicial + Financiado',
+    currency: 'USD',
+    accent: 'bg-violet-50 text-violet-600',
+    Icon: CheckCircle2,
+  },
+  {
+    key: 'pago_movil_bs',
+    title: 'Pago Móvil',
+    subtitle: 'Bs. · Inmediato',
+    currency: 'BS',
+    accent: 'bg-sky-50 text-sky-600',
+    Icon: Smartphone,
+  },
+  {
+    key: 'punto_bs',
+    title: 'Punto de Venta',
+    subtitle: 'Bs. · Débito',
+    currency: 'BS',
+    accent: 'bg-cyan-50 text-cyan-700',
+    Icon: CreditCard,
+  },
+  {
+    key: 'efectivo_bs',
+    title: 'Efectivo Bs.',
+    subtitle: 'Billetes en gaveta',
+    currency: 'BS',
+    accent: 'bg-emerald-50 text-[#074E4A]',
+    Icon: Banknote,
+  },
+  {
+    key: 'credito_usd',
+    title: 'Cuentas por Cobrar',
+    subtitle: 'Créditos otorgados',
+    currency: 'USD',
+    accent: 'bg-rose-50 text-rose-600',
+    Icon: Wallet,
+  },
+];
+
+export default function FinancesView({ settings = {}, currentUser, showToast }) {
+  const [period, setPeriod] = useState('Hoy');
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
-
   const [searchQuery, setSearchQuery] = useState('');
-  const [methodFilter, setMethodFilter] = useState('all');
+  const [methodFilter, setMethodFilter] = useState('ALL');
 
   const [financesData, setFinancesData] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  // Cierre de Caja Inputs
-  const [initialCashUsd, setInitialCashUsd] = useState('0');
-  const [initialCashBs, setInitialCashBs] = useState('0');
-  const [actualCashUsd, setActualCashUsd] = useState('');
-  const [actualCashBs, setActualCashBs] = useState('');
-  const [closingNotes, setClosingNotes] = useState('');
-  const [closingSaved, setClosingSaved] = useState(false);
+  // Cash drawer reconciliation inputs
+  const [initialFundUsd, setInitialFundUsd] = useState('0');
+  const [initialFundBs, setInitialFundBs] = useState('0');
+  const [countedUsd, setCountedUsd] = useState('');
+  const [countedBs, setCountedBs] = useState('');
   const [submittingClose, setSubmittingClose] = useState(false);
+  const [closeSuccess, setCloseSuccess] = useState(false);
 
-  // Set date based on preset
-  const handleSelectPreset = (preset) => {
-    setDatePreset(preset);
+  const tasaTienda = Number(settings.tasa_interna || 960);
+  const tasaBcv = Number(settings.tasa_bcv || 866.56);
+
+  const formatUsd = (val) => `$${Number(val || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const formatBs = (val) => `Bs. ${Number(val || 0).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+  const handleSelectPeriod = (tab) => {
+    setPeriod(tab);
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
 
-    if (preset === 'today') {
+    if (tab === 'Hoy') {
       setStartDate(todayStr);
       setEndDate(todayStr);
-    } else if (preset === 'yesterday') {
+    } else if (tab === 'Ayer') {
       const y = new Date();
       y.setDate(y.getDate() - 1);
       const yStr = y.toISOString().split('T')[0];
       setStartDate(yStr);
       setEndDate(yStr);
-    } else if (preset === 'this_week') {
+    } else if (tab === 'Esta Semana') {
       const d = new Date();
       const day = d.getDay();
-      const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Monday
+      const diff = d.getDate() - day + (day === 0 ? -6 : 1);
       const monday = new Date(d.setDate(diff));
       setStartDate(monday.toISOString().split('T')[0]);
       setEndDate(todayStr);
-    } else if (preset === 'this_month') {
+    } else if (tab === 'Este Mes') {
       const firstDay = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
       setStartDate(firstDay);
       setEndDate(todayStr);
@@ -77,7 +145,7 @@ export default function FinancesView({ settings, currentUser }) {
         startDate,
         endDate,
         q: searchQuery,
-        method: methodFilter
+        method: methodFilter === 'ALL' ? 'all' : methodFilter
       });
       const res = await fetch(`/api/finances?${params.toString()}`);
       const data = await res.json();
@@ -93,11 +161,83 @@ export default function FinancesView({ settings, currentUser }) {
     fetchFinances();
   }, [startDate, endDate, searchQuery, methodFilter]);
 
+  // Derived Values
+  const totalSalesUsd = financesData?.total_sales_usd || 0;
+  const totalSalesBs = financesData?.total_sales_bs || (totalSalesUsd * tasaTienda);
+  const grossProfitUsd = financesData?.gross_profit_usd || 0;
+  const grossProfitBs = financesData?.gross_profit_bs || (grossProfitUsd * tasaTienda);
+  const totalCostUsd = financesData?.total_cost_usd || Math.max(0, totalSalesUsd - grossProfitUsd);
+  const marginPercent = totalSalesUsd > 0 ? (grossProfitUsd / totalSalesUsd) * 100 : 0;
+  const operationsCount = financesData?.sales_count || 0;
+
+  // Expected Cash Drawer Calculations
+  const efectivoUsdEsperado = financesData?.methods?.efectivo_usd || 0;
+  const efectivoBsEsperado = financesData?.methods?.efectivo_bs || 0;
+
+  const parsedInitUsd = Math.max(0, parseFloat(initialFundUsd) || 0);
+  const parsedInitBs = Math.max(0, parseFloat(initialFundBs) || 0);
+
+  const totalEsperadoUsd = parsedInitUsd + efectivoUsdEsperado;
+  const totalEsperadoBs = parsedInitBs + efectivoBsEsperado;
+
+  const parsedCountedUsd = countedUsd.trim() === '' ? totalEsperadoUsd : (parseFloat(countedUsd) || 0);
+  const parsedCountedBs = countedBs.trim() === '' ? totalEsperadoBs : (parseFloat(countedBs) || 0);
+
+  const diffUsd = parsedCountedUsd - totalEsperadoUsd;
+  const diffBs = parsedCountedBs - totalEsperadoBs;
+
+  // WhatsApp Report Generation
+  const buildWhatsAppReport = () => {
+    const ownerName = settings.store_owner || 'Hebert';
+    const storeName = settings.store_name || 'Ferretería Hebert';
+    const dateFormatted = new Date().toLocaleDateString('es-VE');
+
+    return [
+      `📊 *CIERRE Z - ${storeName.toUpperCase()}*`,
+      `📅 Fecha: ${dateFormatted} | Periodo: ${period}`,
+      `👤 Cajero Responsable: ${currentUser?.name || 'Admin Hebert'}`,
+      `──────────────────────────`,
+      `💰 *VENTAS TOTALES:* ${formatUsd(totalSalesUsd)}`,
+      `🇻🇪 *EQUIVALENTE BS.:* ${formatBs(totalSalesBs)}`,
+      `📈 *GANANCIA BRUTA:* ${formatUsd(grossProfitUsd)} (${marginPercent.toFixed(1)}%)`,
+      `📦 *COSTO MERCANCÍA:* ${formatUsd(totalCostUsd)}`,
+      `🧾 *OPERACIONES:* ${operationsCount}`,
+      `──────────────────────────`,
+      `*DESGLOSE POR CANALES:*`,
+      `• Efectivo $: ${formatUsd(financesData?.methods?.efectivo_usd || 0)}`,
+      `• Zelle: ${formatUsd(financesData?.methods?.zelle_usd || 0)}`,
+      `• Binance/USDT: ${formatUsd(financesData?.methods?.binance_usd || 0)}`,
+      `• Cashea (+15%): ${formatUsd((financesData?.methods?.cashea_initial_usd || 0) + (financesData?.methods?.cashea_financed_usd || 0))}`,
+      `• Pago Móvil: ${formatBs(financesData?.methods?.pago_movil_bs || 0)}`,
+      `• Punto de Venta: ${formatBs(financesData?.methods?.punto_bs || 0)}`,
+      `• Efectivo Bs: ${formatBs(financesData?.methods?.efectivo_bs || 0)}`,
+      `• Créditos: ${formatUsd(financesData?.methods?.credito_total_usd || 0)}`,
+      `──────────────────────────`,
+      `*ARQUEO DE CAJA CHICA:*`,
+      `• Fondo Inicial: ${formatUsd(parsedInitUsd)} / ${formatBs(parsedInitBs)}`,
+      `• Efectivo $ Gaveta: Contado ${formatUsd(parsedCountedUsd)} (Esperado ${formatUsd(totalEsperadoUsd)}) -> Dif: ${diffUsd >= 0 ? '+' : ''}${formatUsd(diffUsd)}`,
+      `• Efectivo Bs Gaveta: Contado ${formatBs(parsedCountedBs)} (Esperado ${formatBs(totalEsperadoBs)}) -> Dif: ${diffBs >= 0 ? '+' : ''}${formatBs(diffBs)}`,
+      `──────────────────────────`,
+      `_Reporte generado automáticamente por Sistema POS._`
+    ].join('\n');
+  };
+
+  const handleSendWhatsApp = () => {
+    const text = buildWhatsAppReport();
+    const phone = settings.owner_phone ? settings.owner_phone.replace(/\D/g, '') : '';
+    const url = phone
+      ? `https://wa.me/${phone}?text=${encodeURIComponent(text)}`
+      : `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+
+    window.open(url, '_blank');
+    if (showToast) showToast('Reporte Cierre Z listo para enviar por WhatsApp');
+  };
+
   const handlePrintZReport = () => {
     window.print();
   };
 
-  const handleSaveDailyClose = async () => {
+  const handleSaveCloseout = async () => {
     if (!financesData) return;
     setSubmittingClose(true);
     try {
@@ -107,136 +247,70 @@ export default function FinancesView({ settings, currentUser }) {
         body: JSON.stringify({
           closing_date: endDate,
           cashier_name: currentUser?.name || 'Admin Hebert',
-          initial_cash_usd: parseFloat(initialCashUsd) || 0,
-          initial_cash_bs: parseFloat(initialCashBs) || 0,
-          system_efectivo_usd: financesData.methods.efectivo_usd || 0,
-          system_zelle_usd: financesData.methods.zelle_usd || 0,
-          system_binance_usd: financesData.methods.binance_usd || 0,
-          system_efectivo_bs: financesData.methods.efectivo_bs || 0,
-          system_pago_movil_bs: financesData.methods.pago_movil_bs || 0,
-          system_punto_bs: financesData.methods.punto_bs || 0,
-          system_cashea_usd: (financesData.methods.cashea_initial_usd || 0) + (financesData.methods.cashea_financed_usd || 0),
-          system_credit_usd: financesData.methods.credito_total_usd || 0,
-          total_system_usd: financesData.total_sales_usd || 0,
-          total_system_bs: financesData.total_sales_bs || 0,
-          actual_cash_usd: parseFloat(actualCashUsd) || 0,
-          actual_cash_bs: parseFloat(actualCashBs) || 0,
-          notes: closingNotes
+          initial_cash_usd: parsedInitUsd,
+          initial_cash_bs: parsedInitBs,
+          system_efectivo_usd: financesData.methods?.efectivo_usd || 0,
+          system_zelle_usd: financesData.methods?.zelle_usd || 0,
+          system_binance_usd: financesData.methods?.binance_usd || 0,
+          system_efectivo_bs: financesData.methods?.efectivo_bs || 0,
+          system_pago_movil_bs: financesData.methods?.pago_movil_bs || 0,
+          system_punto_bs: financesData.methods?.punto_bs || 0,
+          system_cashea_usd: (financesData.methods?.cashea_initial_usd || 0) + (financesData.methods?.cashea_financed_usd || 0),
+          system_credit_usd: financesData.methods?.credito_total_usd || 0,
+          total_system_usd: totalSalesUsd,
+          actual_cash_usd: parsedCountedUsd,
+          actual_cash_bs: parsedCountedBs,
+          diff_usd: diffUsd,
+          diff_bs: diffBs,
+          notes: `Cierre realizado por ${currentUser?.name || 'Admin Hebert'}`
         })
       });
-      if (!res.ok) throw new Error('Error al guardar el cierre');
-      setClosingSaved(true);
-      setTimeout(() => setClosingSaved(false), 4000);
+
+      if (!res.ok) throw new Error('Error al registrar cierre de caja');
+
+      setCloseSuccess(true);
+      setTimeout(() => setCloseSuccess(false), 3000);
+      if (showToast) showToast('¡Cierre Z registrado exitosamente en la base de datos!');
     } catch (err) {
-      alert('Error: ' + err.message);
+      if (showToast) showToast(err.message, 'error');
     } finally {
       setSubmittingClose(false);
     }
   };
 
-  // Difference calculations for cash register
-  const expectedEfectivoUsd = (parseFloat(initialCashUsd) || 0) + (financesData?.methods?.efectivo_usd || 0);
-  const countedEfectivoUsd = actualCashUsd !== '' ? parseFloat(actualCashUsd) : expectedEfectivoUsd;
-  const diffUsd = Math.round((countedEfectivoUsd - expectedEfectivoUsd) * 100) / 100;
-
-  const expectedEfectivoBs = (parseFloat(initialCashBs) || 0) + (financesData?.methods?.efectivo_bs || 0);
-  const countedEfectivoBs = actualCashBs !== '' ? parseFloat(actualCashBs) : expectedEfectivoBs;
-  const diffBs = Math.round((countedEfectivoBs - expectedEfectivoBs) * 100) / 100;
-
-  const handleShareClosingWhatsApp = () => {
-    if (!financesData) return;
-    const companyName = settings?.company_name || 'Ferretería Hebert';
-    const cashier = currentUser?.name || 'Admin Hebert';
-    const dateStr = startDate === endDate ? startDate : `${startDate} al ${endDate}`;
-    const tasa = Number(settings?.tasa_interna || 960).toFixed(2);
-    const tasaBcv = Number(settings?.tasa_bcv || 883.40).toFixed(2);
-
-    const totalUsd = Number(financesData.total_sales_usd || 0).toFixed(2);
-    const totalBs = Number(financesData.total_sales_bs || 0).toLocaleString('es-VE', { minimumFractionDigits: 2 });
-    const totalProfitUsd = Number(financesData.total_profit_usd || 0).toFixed(2);
-
-    const m = financesData.methods || {};
-    const abonosUsd = Number(financesData.total_abonos_usd || 0).toFixed(2);
-
-    const text = `📊 *CIERRE DIARIO DE CAJA (CIERRE Z)*\n` +
-      `🏢 *Empresa:* ${companyName}\n` +
-      `👤 *Cajero:* ${cashier}\n` +
-      `📅 *Período:* ${dateStr}\n` +
-      `📈 *Tasa Tienda:* Bs. ${tasa} | *BCV:* Bs. ${tasaBcv}\n\n` +
-      `💰 *TOTAL VENTAS:* $${totalUsd} (Bs. ${totalBs})\n` +
-      `🧾 *Cantidad de Ventas:* ${financesData.total_sales_count || 0} tickets\n` +
-      `📈 *Ganancia Bruta:* $${totalProfitUsd}\n\n` +
-      `💵 *DESGLOSE POR MÉTODO DE PAGO:*\n` +
-      `• Efectivo ($): $${Number(m.efectivo_usd || 0).toFixed(2)}\n` +
-      `• Zelle ($): $${Number(m.zelle_usd || 0).toFixed(2)}\n` +
-      `• Binance USDT ($): $${Number(m.binance_usd || 0).toFixed(2)}\n` +
-      `• Efectivo (Bs.): Bs. ${Number(m.efectivo_bs || 0).toLocaleString('es-VE')}\n` +
-      `• Pago Móvil (Bs.): Bs. ${Number(m.pago_movil_bs || 0).toLocaleString('es-VE')}\n` +
-      `• Punto de Venta (Bs.): Bs. ${Number(m.punto_bs || 0).toLocaleString('es-VE')}\n` +
-      `• Cashea: $${Number((m.cashea_initial_usd || 0) + (m.cashea_financed_usd || 0)).toFixed(2)}\n` +
-      `• Créditos Otorgados: $${Number(m.credito_total_usd || 0).toFixed(2)}\n` +
-      `• Abonos Cobrados: $${abonosUsd}\n\n` +
-      `🔒 *ARQUEO DE GAVETA:*\n` +
-      `• Efectivo $ esperado: $${expectedEfectivoUsd.toFixed(2)}\n` +
-      (actualCashUsd !== '' ? `• Efectivo $ contado: $${Number(actualCashUsd).toFixed(2)} (${diffUsd === 0 ? 'Exacto' : diffUsd > 0 ? `+$${diffUsd.toFixed(2)} Sobrante` : `$${diffUsd.toFixed(2)} Faltante`})\n` : '') +
-      `• Efectivo Bs. esperado: Bs. ${expectedEfectivoBs.toLocaleString('es-VE')}\n` +
-      (actualCashBs !== '' ? `• Efectivo Bs. contado: Bs. ${Number(actualCashBs).toLocaleString('es-VE')} (${diffBs === 0 ? 'Exacto' : diffBs > 0 ? `+Bs. ${diffBs.toLocaleString('es-VE')} Sobrante` : `Bs. ${diffBs.toLocaleString('es-VE')} Faltante`})\n` : '') +
-      (closingNotes ? `\n📝 *Notas:* ${closingNotes}\n` : '') +
-      `\n_Reporte diario emitido por Sistema POS Ferretería Hebert._`;
-
-    const rawOwnerPhone = (settings?.company_phone || '').replace(/\D/g, '');
-    let phoneParam = rawOwnerPhone;
-    if (phoneParam.startsWith('0')) {
-      phoneParam = '58' + phoneParam.substring(1);
-    }
-
-    const url = phoneParam
-      ? `https://wa.me/${phoneParam}?text=${encodeURIComponent(text)}`
-      : `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
-
-    window.open(url, '_blank');
-  };
-
   return (
-    <div className="space-y-4 max-w-[1720px] mx-auto">
+    <div className="flex flex-col gap-6 max-w-[1720px] mx-auto pb-10">
       {/* ========================================================= */}
-      {/* HEADER BAR                                                */}
+      {/* HEADER BANNER — EXACTO AL SCREENSHOT 1                    */}
       {/* ========================================================= */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-5 shadow-xs flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-emerald-50 text-[#00a884] flex items-center justify-center font-bold">
+      <div className="card-surface p-5 sm:p-6 flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <div className="w-11 h-11 rounded-2xl bg-[#E6F7F5] text-[#074E4A] flex items-center justify-center shrink-0">
             <TrendingUp className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-gray-900 tracking-tight">Finanzas, Ganancias & Cierre de Caja</h2>
-            <p className="text-xs text-gray-400">Auditoría en tiempo real de ingresos, costos de inventario, ganancias y arqueo de turnos</p>
+            <h2 className="font-display font-bold text-[19px] text-[#111827]">
+              Finanzas, Ganancias & Cierre de Caja
+            </h2>
+            <p className="text-xs sm:text-[13px] text-slate-400 mt-0.5">
+              Auditoría en tiempo real de ingresos, costos de inventario, ganancias y arqueo de turnos
+            </p>
           </div>
         </div>
 
-        {/* Quick Actions */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={fetchFinances}
-            className="p-2 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-600 transition-colors cursor-pointer"
-            title="Refrescar datos"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          </button>
-
+        <div className="flex flex-wrap items-center gap-2.5">
           <button
             type="button"
-            onClick={handleShareClosingWhatsApp}
-            disabled={!financesData}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3.5 py-2 rounded-xl text-xs flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer disabled:opacity-50"
-            title="Enviar reporte diario de cierre por WhatsApp al teléfono del dueño"
+            onClick={handleSendWhatsApp}
+            className="px-4 py-2.5 rounded-xl bg-[#E6F7F5] hover:bg-[#D1F0EC] text-[#074E4A] text-xs font-semibold flex items-center gap-2 transition-colors whitespace-nowrap cursor-pointer"
           >
             <MessageCircle className="w-4 h-4" />
             <span>Enviar por WhatsApp</span>
           </button>
-
           <button
+            type="button"
             onClick={handlePrintZReport}
-            className="bg-[#00a884] hover:bg-[#008f6f] text-white font-semibold px-4 py-2 rounded-xl text-xs flex items-center gap-2 shadow-xs transition-colors cursor-pointer"
+            className="px-4 py-2.5 rounded-xl bg-[#074E4A] hover:bg-[#053E3B] text-white text-xs font-semibold flex items-center gap-2 transition-colors whitespace-nowrap cursor-pointer shadow-xs"
           >
             <Printer className="w-4 h-4" />
             <span>Imprimir Cierre Z</span>
@@ -245,546 +319,390 @@ export default function FinancesView({ settings, currentUser }) {
       </div>
 
       {/* ========================================================= */}
-      {/* ADVANCED FILTERS ROW                                      */}
+      {/* FILTROS DE PERÍODO & BÚSQUEDA — EXACTO A SCREENSHOT 1      */}
       {/* ========================================================= */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-xs space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
-          {/* Preset Buttons */}
-          <div className="flex items-center gap-1.5 bg-gray-100/80 p-1 rounded-xl font-semibold">
-            {[
-              { id: 'today', label: 'Hoy' },
-              { id: 'yesterday', label: 'Ayer' },
-              { id: 'this_week', label: 'Esta Semana' },
-              { id: 'this_month', label: 'Este Mes' },
-              { id: 'custom', label: 'Personalizado' }
-            ].map(p => (
+      <div className="card-surface p-4 flex flex-col gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          {/* Period Filter Tabs */}
+          <div
+            className="flex flex-wrap items-center gap-1 bg-[#F4F6F8] p-1 rounded-xl"
+            role="tablist"
+            aria-label="Periodo financiero"
+          >
+            {['Hoy', 'Ayer', 'Esta Semana', 'Este Mes', 'Personalizado'].map((tab) => (
               <button
-                key={p.id}
-                onClick={() => handleSelectPreset(p.id)}
-                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                  datePreset === p.id
-                    ? 'bg-white text-gray-900 shadow-xs'
-                    : 'text-gray-500 hover:text-gray-900'
+                key={tab}
+                type="button"
+                role="tab"
+                aria-selected={period === tab}
+                onClick={() => handleSelectPeriod(tab)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${
+                  period === tab
+                    ? 'bg-white text-[#111827] shadow-xs'
+                    : 'text-slate-500 hover:text-[#111827]'
                 }`}
               >
-                {p.label}
+                {tab}
               </button>
             ))}
           </div>
 
-          {/* Date Range Inputs */}
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-200/80 rounded-xl px-3 py-1.5 text-xs">
-              <span className="text-gray-400 font-medium">Desde:</span>
+          {/* Date Pickers */}
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <label className="flex items-center gap-1.5 text-slate-500">
+              <span>Desde:</span>
               <input
                 type="date"
                 value={startDate}
                 onChange={(e) => {
-                  setDatePreset('custom');
                   setStartDate(e.target.value);
+                  setPeriod('Personalizado');
                 }}
-                className="bg-transparent font-medium text-gray-800 focus:outline-none"
+                className="bg-[#F6F8FA] rounded-lg px-2.5 py-1.5 font-mono-num text-xs text-[#111827] border border-slate-100"
               />
-            </div>
-            <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-200/80 rounded-xl px-3 py-1.5 text-xs">
-              <span className="text-gray-400 font-medium">Hasta:</span>
+            </label>
+            <label className="flex items-center gap-1.5 text-slate-500">
+              <span>Hasta:</span>
               <input
                 type="date"
                 value={endDate}
                 onChange={(e) => {
-                  setDatePreset('custom');
                   setEndDate(e.target.value);
+                  setPeriod('Personalizado');
                 }}
-                className="bg-transparent font-medium text-gray-800 focus:outline-none"
+                className="bg-[#F6F8FA] rounded-lg px-2.5 py-1.5 font-mono-num text-xs text-[#111827] border border-slate-100"
               />
-            </div>
+            </label>
           </div>
         </div>
 
-        {/* Search & Method Filter */}
-        <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-gray-100 text-xs">
-          <div className="relative flex-1 min-w-[220px]">
-            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+        {/* Search & Channel Filter */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
-              type="text"
+              type="search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Buscar por # ticket, cliente o cajero..."
-              className="w-full pl-8 pr-3 py-1.5 bg-gray-50 border border-gray-200/80 rounded-xl text-xs focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#00a884]/20 focus:border-[#00a884]"
+              className="w-full bg-[#F6F8FA] focus:bg-white text-[13px] text-[#111827] placeholder:text-slate-400 pl-10 pr-4 py-2 rounded-xl border border-transparent focus:border-[#074E4A]/30 focus:outline-none transition-colors"
             />
           </div>
-
-          <div className="flex items-center gap-2">
-            <span className="text-gray-400 font-medium">Método de Cobro:</span>
-            <select
-              value={methodFilter}
-              onChange={(e) => setMethodFilter(e.target.value)}
-              className="p-1.5 bg-gray-50 border border-gray-200/80 rounded-xl text-xs font-semibold text-gray-800 focus:bg-white focus:outline-none"
-            >
-              <option value="all">Todos los Métodos</option>
-              <option value="efectivo_usd">💵 Efectivo Dólares ($ Billetes)</option>
-              <option value="zelle">🏦 Zelle (Dólares)</option>
-              <option value="binance">🟡 Binance / USDT</option>
-              <option value="pago móvil">📱 Pago Móvil (Bs)</option>
-              <option value="punto">💳 Punto de Venta (Bs)</option>
-              <option value="cashea">🟣 Cashea</option>
-              <option value="credito">🤝 A Crédito (Factura Abierta)</option>
-            </select>
-          </div>
+          <select
+            aria-label="Filtrar por método de cobro"
+            value={methodFilter}
+            onChange={(e) => setMethodFilter(e.target.value)}
+            className="bg-[#F6F8FA] rounded-xl px-3.5 py-2 text-xs font-semibold text-[#111827] border border-slate-100 cursor-pointer"
+          >
+            <option value="ALL">Todos los Métodos</option>
+            {PAYMENT_CHANNELS.map((c) => (
+              <option key={c.key} value={c.key}>
+                {c.title}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
-      {financesData && (
-        <>
-          {/* ========================================================= */}
-          {/* 4 MAIN KPI CARDS                                         */}
-          {/* ========================================================= */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-            {/* Total Ventas USD */}
-            <div className="p-4 sm:p-5 rounded-2xl bg-white border border-gray-100 shadow-xs flex items-center justify-between">
-              <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Total Ventas ($ USD)</span>
-                <div className="text-xl sm:text-2xl font-black font-mono text-gray-900 mt-1">
-                  ${financesData.total_sales_usd.toFixed(2)}
-                </div>
-                <div className="text-[11px] text-[#00a884] font-mono mt-0.5 font-bold">
-                  Bs. {financesData.total_sales_bs.toLocaleString('es-VE', { minimumFractionDigits: 2 })}
-                </div>
-              </div>
-              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-[#00a884] flex items-center justify-center font-bold">
-                <DollarSign className="w-5 h-5" />
-              </div>
-            </div>
-
-            {/* Ganancia Bruta Real */}
-            <div className="p-4 sm:p-5 rounded-2xl bg-white border border-gray-100 shadow-xs flex items-center justify-between">
-              <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600">Ganancia Bruta Real</span>
-                <div className="text-xl sm:text-2xl font-black font-mono text-[#00a884] mt-1">
-                  ${financesData.gross_profit_usd.toFixed(2)}
-                </div>
-                <div className="text-[11px] text-gray-500 font-mono mt-0.5">
-                  Bs. {financesData.gross_profit_bs.toLocaleString('es-VE')}
-                </div>
-              </div>
-              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-[#00a884] flex items-center justify-center font-bold">
-                <ArrowUpRight className="w-5 h-5" />
-              </div>
-            </div>
-
-            {/* Costo Mercancía Vendida */}
-            <div className="p-4 sm:p-5 rounded-2xl bg-white border border-gray-100 shadow-xs flex items-center justify-between">
-              <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Costo Mercancía Vendida</span>
-                <div className="text-xl sm:text-2xl font-black font-mono text-gray-700 mt-1">
-                  ${financesData.total_cost_usd.toFixed(2)}
-                </div>
-                <div className="text-[11px] text-gray-400 mt-0.5">Costo base de reposición</div>
-              </div>
-              <div className="w-10 h-10 rounded-xl bg-gray-50 text-gray-600 flex items-center justify-center font-bold">
-                <Scale className="w-5 h-5" />
-              </div>
-            </div>
-
-            {/* Margen de Rentabilidad */}
-            <div className="p-4 sm:p-5 rounded-2xl bg-white border border-gray-100 shadow-xs flex items-center justify-between">
-              <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-500">Margen de Rentabilidad</span>
-                <div className="text-xl sm:text-2xl font-black font-mono text-indigo-600 mt-1">
-                  {financesData.profit_margin_percent}%
-                </div>
-                <div className="text-[11px] text-gray-400 mt-0.5">{financesData.total_tickets} operaciones</div>
-              </div>
-              <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
-                <TrendingUp className="w-5 h-5" />
-              </div>
-            </div>
+      {/* ========================================================= */}
+      {/* 4 TARJETAS KPI FINANCIERAS — EXACTO A SCREENSHOT 1        */}
+      {/* ========================================================= */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* KPI 1: Total Ventas */}
+        <div className="card-surface card-surface-hover p-5 flex items-start justify-between gap-3">
+          <div>
+            <p className="text-[11.5px] font-semibold text-slate-400 uppercase tracking-wide">
+              Total Ventas ($ USD)
+            </p>
+            <p className="font-display font-bold text-[24px] text-[#111827] font-mono-num mt-1">
+              {formatUsd(totalSalesUsd)}
+            </p>
+            <p className="font-mono-num text-xs font-semibold text-[#074E4A] mt-1">
+              {formatBs(totalSalesBs)}
+            </p>
           </div>
+          <span className="w-9 h-9 rounded-xl bg-[#E6F7F5] text-[#074E4A] flex items-center justify-center shrink-0">
+            <DollarSign className="w-4 h-4" />
+          </span>
+        </div>
 
-          {/* ========================================================= */}
-          {/* PAYMENT CHANNELS (DIVISAS 3 EN 1, CASHEA, ETC.)           */}
-          {/* ========================================================= */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-            {/* Payment Method Breakdown (8 cols) */}
-            <div className="lg:col-span-7 bg-white rounded-2xl border border-gray-100 shadow-xs p-5 space-y-4">
-              <h3 className="font-bold text-sm text-gray-900 border-b border-gray-100 pb-2">
-                Desglose por Canales de Cobro (Divisas 3 en 1, Bolívares y Cashea)
+        {/* KPI 2: Ganancia Bruta Real */}
+        <div className="card-surface card-surface-hover p-5 flex items-start justify-between gap-3">
+          <div>
+            <p className="text-[11.5px] font-semibold text-slate-400 uppercase tracking-wide">
+              Ganancia Bruta Real
+            </p>
+            <p className="font-display font-bold text-[24px] text-[#074E4A] font-mono-num mt-1">
+              {formatUsd(grossProfitUsd)}
+            </p>
+            <p className="font-mono-num text-xs text-slate-400 mt-1">
+              {formatBs(grossProfitBs)}
+            </p>
+          </div>
+          <span className="w-9 h-9 rounded-xl bg-[#F2FCE2] text-[#3F6212] flex items-center justify-center shrink-0">
+            <TrendingUp className="w-4 h-4" />
+          </span>
+        </div>
+
+        {/* KPI 3: Costo Mercancía Vendida */}
+        <div className="card-surface card-surface-hover p-5 flex items-start justify-between gap-3">
+          <div>
+            <p className="text-[11.5px] font-semibold text-slate-400 uppercase tracking-wide">
+              Costo Mercancía Vendida
+            </p>
+            <p className="font-display font-bold text-[24px] text-[#111827] font-mono-num mt-1">
+              {formatUsd(totalCostUsd)}
+            </p>
+            <p className="text-xs text-slate-400 mt-1">
+              Costo base de reposición
+            </p>
+          </div>
+          <span className="w-9 h-9 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center shrink-0">
+            <Scale className="w-4 h-4" />
+          </span>
+        </div>
+
+        {/* KPI 4: Margen de Rentabilidad */}
+        <div className="card-surface card-surface-hover p-5 flex items-start justify-between gap-3">
+          <div>
+            <p className="text-[11.5px] font-semibold text-slate-400 uppercase tracking-wide">
+              Margen de Rentabilidad
+            </p>
+            <p className="font-display font-bold text-[24px] text-indigo-600 font-mono-num mt-1">
+              {marginPercent.toFixed(1)}%
+            </p>
+            <p className="text-xs text-slate-400 mt-1">
+              {operationsCount} operaciones
+            </p>
+          </div>
+          <span className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+            <CheckCircle2 className="w-4 h-4" />
+          </span>
+        </div>
+      </div>
+
+      {/* ========================================================= */}
+      {/* 2 COLUMNAS: DESGLOSE DE CANALES + CIERRE DE CAJA ARQUEO   */}
+      {/* ========================================================= */}
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+        {/* Columna Izquierda: Desglose por Canales de Cobro */}
+        <section
+          className="xl:col-span-7 card-surface p-5 sm:p-6"
+          aria-label="Desglose por canales de cobro"
+        >
+          <h3 className="font-display font-bold text-[16px] text-[#111827] mb-4">
+            Desglose por Canales de Cobro (Divisas 3 en 1, Bolívares y Cashea)
+          </h3>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {PAYMENT_CHANNELS.map(({ key, title, subtitle, currency, accent, Icon }) => {
+              let valUsd = 0;
+              let valBs = 0;
+
+              if (financesData?.methods) {
+                if (key === 'efectivo_usd') valUsd = financesData.methods.efectivo_usd || 0;
+                else if (key === 'zelle_usd') valUsd = financesData.methods.zelle_usd || 0;
+                else if (key === 'binance_usd') valUsd = financesData.methods.binance_usd || 0;
+                else if (key === 'cashea') valUsd = (financesData.methods.cashea_initial_usd || 0) + (financesData.methods.cashea_financed_usd || 0);
+                else if (key === 'pago_movil_bs') {
+                  valBs = financesData.methods.pago_movil_bs || 0;
+                  valUsd = valBs / tasaTienda;
+                } else if (key === 'punto_bs') {
+                  valBs = financesData.methods.punto_bs || 0;
+                  valUsd = valBs / tasaTienda;
+                } else if (key === 'efectivo_bs') {
+                  valBs = financesData.methods.efectivo_bs || 0;
+                  valUsd = valBs / tasaTienda;
+                } else if (key === 'credito_usd') {
+                  valUsd = financesData.methods.credito_total_usd || 0;
+                }
+              }
+
+              return (
+                <div
+                  key={key}
+                  className="bg-[#F6F8FA] rounded-xl p-3 flex items-center justify-between gap-2 border border-slate-100"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className={`w-8 h-8 rounded-xl ${accent} flex items-center justify-center shrink-0`}>
+                      <Icon className="w-4 h-4" />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-[#111827] whitespace-nowrap">
+                        {title}
+                      </p>
+                      <p className="text-[11px] text-slate-400 truncate">
+                        {subtitle}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="text-right shrink-0">
+                    <p className="font-mono-num text-[13px] font-bold text-[#111827] whitespace-nowrap">
+                      {currency === 'USD' ? formatUsd(valUsd) : formatBs(valBs)}
+                    </p>
+                    {currency === 'BS' && valUsd > 0 && (
+                      <p className="font-mono-num text-[10.5px] text-slate-400">
+                        {formatUsd(valUsd)}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* Columna Derecha: Cierre de Caja Diario (Arqueo) */}
+        <section
+          className="xl:col-span-5 card-surface p-5 sm:p-6 flex flex-col gap-4"
+          aria-label="Cierre de caja diario"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Lock className="w-4 h-4 text-[#074E4A]" />
+              <h3 className="font-display font-bold text-[16px] text-[#111827]">
+                Cierre de Caja Diario (Arqueo)
               </h3>
+            </div>
+            <span className="px-2.5 py-1 rounded-lg bg-[#E6F7F5] text-[#074E4A] text-[11px] font-semibold">
+              Cajero: {currentUser?.name || 'Admin Hebert'}
+            </span>
+          </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                {/* 1. Efectivo Dólares */}
-                <div className="p-3.5 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
-                      💵
-                    </div>
-                    <div>
-                      <div className="font-bold text-gray-900">Efectivo Dólares ($)</div>
-                      <div className="text-[10px] text-gray-400">Billetes físicos en gaveta</div>
-                    </div>
-                  </div>
-                  <div className="text-right font-mono font-black text-emerald-700 text-sm">
-                    ${financesData.methods.efectivo_usd.toFixed(2)}
-                  </div>
-                </div>
-
-                {/* 2. Zelle */}
-                <div className="p-3.5 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-purple-100 text-purple-800 flex items-center justify-center font-bold">
-                      🏦
-                    </div>
-                    <div>
-                      <div className="font-bold text-gray-900">Zelle (Dólares)</div>
-                      <div className="text-[10px] text-gray-400">Transferencias EE.UU.</div>
-                    </div>
-                  </div>
-                  <div className="text-right font-mono font-black text-purple-700 text-sm">
-                    ${financesData.methods.zelle_usd.toFixed(2)}
-                  </div>
-                </div>
-
-                {/* 3. Binance */}
-                <div className="p-3.5 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center font-bold">
-                      🟡
-                    </div>
-                    <div>
-                      <div className="font-bold text-gray-900">Binance / USDT</div>
-                      <div className="text-[10px] text-gray-400">Criptomonedas / P2P</div>
-                    </div>
-                  </div>
-                  <div className="text-right font-mono font-black text-amber-700 text-sm">
-                    ${financesData.methods.binance_usd.toFixed(2)}
-                  </div>
-                </div>
-
-                {/* 4. Cashea */}
-                <div className="p-3.5 rounded-xl bg-purple-50/60 border border-purple-200/60 flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-purple-200 text-purple-900 flex items-center justify-center font-bold">
-                      🟣
-                    </div>
-                    <div>
-                      <div className="font-bold text-gray-900">Cashea (Precio 2)</div>
-                      <div className="text-[10px] text-gray-400">Inicial + Financiado</div>
-                    </div>
-                  </div>
-                  <div className="text-right font-mono font-black text-purple-800 text-sm">
-                    ${(financesData.methods.cashea_initial_usd + financesData.methods.cashea_financed_usd).toFixed(2)}
-                  </div>
-                </div>
-
-                {/* 5. Pago Móvil Bs */}
-                <div className="p-3.5 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-teal-100 text-teal-800 flex items-center justify-center">
-                      <Smartphone className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="font-bold text-gray-900">Pago Móvil (Bs)</div>
-                      <div className="text-[10px] text-gray-400">Transferencias inmediatas</div>
-                    </div>
-                  </div>
-                  <div className="text-right font-mono font-black text-gray-900 text-sm">
-                    Bs. {financesData.methods.pago_movil_bs.toLocaleString('es-VE', { minimumFractionDigits: 2 })}
-                  </div>
-                </div>
-
-                {/* 6. Punto de Venta Bs */}
-                <div className="p-3.5 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-sky-100 text-sky-800 flex items-center justify-center">
-                      <CreditCard className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="font-bold text-gray-900">Punto de Venta (Bs)</div>
-                      <div className="text-[10px] text-gray-400">Tarjetas de Débito</div>
-                    </div>
-                  </div>
-                  <div className="text-right font-mono font-black text-gray-900 text-sm">
-                    Bs. {financesData.methods.punto_bs.toLocaleString('es-VE', { minimumFractionDigits: 2 })}
-                  </div>
-                </div>
-
-                {/* 7. Efectivo Bolívares */}
-                <div className="p-3.5 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center">
-                      <Coins className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="font-bold text-gray-900">Efectivo Bolívares</div>
-                      <div className="text-[10px] text-gray-400">Billetes en gaveta</div>
-                    </div>
-                  </div>
-                  <div className="text-right font-mono font-black text-gray-900 text-sm">
-                    Bs. {financesData.methods.efectivo_bs.toLocaleString('es-VE', { minimumFractionDigits: 2 })}
-                  </div>
-                </div>
-
-                {/* 8. Créditos Otorgados */}
-                <div className="p-3.5 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-800 flex items-center justify-center font-bold">
-                      🤝
-                    </div>
-                    <div>
-                      <div className="font-bold text-gray-900">Ventas a Crédito</div>
-                      <div className="text-[10px] text-gray-400">Facturas abiertas</div>
-                    </div>
-                  </div>
-                  <div className="text-right font-mono font-black text-indigo-700 text-sm">
-                    ${financesData.methods.credito_total_usd.toFixed(2)}
-                  </div>
-                </div>
-              </div>
+          {/* Inputs de Fondos Iniciales */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label
+                htmlFor="init-fund-usd"
+                className="text-[11px] font-semibold text-slate-500 block mb-1"
+              >
+                Fondo Inicial ($)
+              </label>
+              <input
+                id="init-fund-usd"
+                type="number"
+                min="0"
+                step="0.01"
+                value={initialFundUsd}
+                onChange={(e) => setInitialFundUsd(e.target.value)}
+                className="w-full bg-[#F6F8FA] rounded-xl px-3 py-2 font-mono-num text-xs font-bold text-[#111827] border border-slate-100 focus:bg-white focus:outline-none focus:border-[#074E4A]"
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="init-fund-bs"
+                className="text-[11px] font-semibold text-slate-500 block mb-1"
+              >
+                Fondo Inicial (Bs)
+              </label>
+              <input
+                id="init-fund-bs"
+                type="number"
+                min="0"
+                step="1"
+                value={initialFundBs}
+                onChange={(e) => setInitialFundBs(e.target.value)}
+                className="w-full bg-[#F6F8FA] rounded-xl px-3 py-2 font-mono-num text-xs font-bold text-[#111827] border border-slate-100 focus:bg-white focus:outline-none focus:border-[#074E4A]"
+              />
             </div>
 
-            {/* ========================================================= */}
-            {/* CIERRE DE CAJA DIARIO (ARQUEO & CUADRE DE TURNO)           */}
-            {/* ========================================================= */}
-            <div className="lg:col-span-5 bg-white rounded-2xl border border-gray-100 shadow-xs p-5 space-y-4">
-              <div className="flex items-center justify-between border-b border-gray-100 pb-2">
-                <h3 className="font-bold text-sm text-gray-900 flex items-center gap-1.5">
-                  <Lock className="w-4 h-4 text-[#00a884]" />
-                  <span>Cierre de Caja Diario (Arqueo)</span>
-                </h3>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800">
-                  Cajero: {currentUser?.name || 'Admin'}
-                </span>
-              </div>
-
-              <div className="space-y-3 text-xs">
-                {/* Fondos Iniciales */}
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="text-gray-600 font-semibold block mb-1">
-                      Fondo Inicial ($):
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={initialCashUsd}
-                      onChange={(e) => setInitialCashUsd(e.target.value)}
-                      placeholder="0.00"
-                      className="w-full p-2 bg-gray-50 border border-gray-200/80 rounded-xl font-mono text-gray-900 text-xs focus:bg-white focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-gray-600 font-semibold block mb-1">
-                      Fondo Inicial (Bs):
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={initialCashBs}
-                      onChange={(e) => setInitialCashBs(e.target.value)}
-                      placeholder="0.00"
-                      className="w-full p-2 bg-gray-50 border border-gray-200/80 rounded-xl font-mono text-gray-900 text-xs focus:bg-white focus:outline-none"
-                    />
-                  </div>
-                </div>
-
-                {/* Arqueo Ciego / Conteo Real */}
-                <div className="grid grid-cols-2 gap-2 pt-1 border-t border-gray-100">
-                  <div>
-                    <label className="text-gray-700 font-bold block mb-1">
-                      Billetes $ Contados en Caja:
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={actualCashUsd}
-                      onChange={(e) => setActualCashUsd(e.target.value)}
-                      placeholder={expectedEfectivoUsd.toFixed(2)}
-                      className="w-full p-2 bg-emerald-50/50 border border-emerald-200 rounded-xl font-mono text-gray-900 font-bold text-xs focus:bg-white focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-gray-700 font-bold block mb-1">
-                      Billetes Bs Contados en Caja:
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={actualCashBs}
-                      onChange={(e) => setActualCashBs(e.target.value)}
-                      placeholder={expectedEfectivoBs.toFixed(2)}
-                      className="w-full p-2 bg-teal-50/50 border border-teal-200 rounded-xl font-mono text-gray-900 font-bold text-xs focus:bg-white focus:outline-none"
-                    />
-                  </div>
-                </div>
-
-                {/* Cuadre & Diferencias */}
-                <div className="p-3 rounded-xl bg-gray-50 border border-gray-100 space-y-1.5 font-mono text-xs">
-                  <div className="flex justify-between text-gray-600">
-                    <span>Efectivo $ Esperado:</span>
-                    <span className="font-bold">${expectedEfectivoUsd.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Diferencia USD:</span>
-                    <span className={`font-black ${diffUsd === 0 ? 'text-[#00a884]' : diffUsd > 0 ? 'text-blue-600' : 'text-rose-600'}`}>
-                      {diffUsd === 0 ? '✓ Cuadre Exacto' : diffUsd > 0 ? `+${diffUsd.toFixed(2)} Sobrante` : `${diffUsd.toFixed(2)} Faltante`}
-                    </span>
-                  </div>
-                  <div className="h-px bg-gray-200" />
-                  <div className="flex justify-between text-gray-600">
-                    <span>Efectivo Bs Esperado:</span>
-                    <span className="font-bold">Bs. {expectedEfectivoBs.toLocaleString('es-VE')}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Diferencia Bs:</span>
-                    <span className={`font-black ${diffBs === 0 ? 'text-[#00a884]' : diffBs > 0 ? 'text-blue-600' : 'text-rose-600'}`}>
-                      {diffBs === 0 ? '✓ Cuadre Exacto' : diffBs > 0 ? `+Bs. ${diffBs.toLocaleString('es-VE')} Sobrante` : `Bs. ${diffBs.toLocaleString('es-VE')} Faltante`}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Botón WhatsApp Cierre & Guardar Cierre */}
-                <div className="space-y-2">
-                  <button
-                    type="button"
-                    onClick={handleShareClosingWhatsApp}
-                    disabled={!financesData}
-                    className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-xs transition-colors cursor-pointer"
-                  >
-                    <MessageCircle className="w-3.5 h-3.5" />
-                    <span>Enviar Resumen de Cierre por WhatsApp</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleSaveDailyClose}
-                    disabled={submittingClose}
-                    className="w-full py-2.5 bg-gray-900 hover:bg-black text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-xs transition-colors cursor-pointer disabled:opacity-50"
-                  >
-                    <Lock className="w-3.5 h-3.5" />
-                    <span>{submittingClose ? 'Guardando Cierre...' : 'Guardar Cierre de Caja Definitivo'}</span>
-                  </button>
-                </div>
-
-                {closingSaved && (
-                  <div className="p-2.5 bg-emerald-50 text-[#00a884] border border-emerald-200 rounded-xl text-center text-xs font-bold animate-in fade-in">
-                    ✓ Cierre de Caja guardado con éxito en el historial
-                  </div>
-                )}
-              </div>
+            {/* Inputs de Billetes Contados */}
+            <div>
+              <label
+                htmlFor="counted-usd"
+                className="text-[11px] font-semibold text-slate-500 block mb-1"
+              >
+                Billetes $ Contados
+              </label>
+              <input
+                id="counted-usd"
+                type="number"
+                min="0"
+                step="0.01"
+                value={countedUsd}
+                onChange={(e) => setCountedUsd(e.target.value)}
+                placeholder={totalEsperadoUsd.toFixed(2)}
+                className="w-full bg-[#F6F8FA] rounded-xl px-3 py-2 font-mono-num text-xs font-bold text-[#111827] border border-slate-100 focus:bg-white focus:outline-none focus:border-[#074E4A]"
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="counted-bs"
+                className="text-[11px] font-semibold text-slate-500 block mb-1"
+              >
+                Billetes Bs Contados
+              </label>
+              <input
+                id="counted-bs"
+                type="number"
+                min="0"
+                step="1"
+                value={countedBs}
+                onChange={(e) => setCountedBs(e.target.value)}
+                placeholder={totalEsperadoBs.toFixed(2)}
+                className="w-full bg-[#F6F8FA] rounded-xl px-3 py-2 font-mono-num text-xs font-bold text-[#111827] border border-slate-100 focus:bg-white focus:outline-none focus:border-[#074E4A]"
+              />
             </div>
           </div>
 
-          {/* ========================================================= */}
-          {/* DETAILED SALES AUDIT TABLE (COSTO, VENTA, GANANCIA)        */}
-          {/* ========================================================= */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-xs overflow-hidden">
-            <div className="p-4 border-b border-gray-100 flex items-center justify-between">
-              <div>
-                <h3 className="font-bold text-sm text-gray-900">Auditoría Detallada de Operaciones</h3>
-                <p className="text-[11px] text-gray-400">Desglose de cada venta con costo de inventario y ganancia calculada</p>
-              </div>
-              <span className="px-2.5 py-1 rounded-full bg-gray-100 text-gray-700 font-bold text-xs">
-                {financesData.sales?.length || 0} tickets
+          {/* Desglose de Totales Esperados vs Diferencia */}
+          <div className="bg-[#F6F8FA] rounded-xl p-3.5 flex flex-col gap-2.5 text-xs border border-slate-100">
+            <div className="flex items-center justify-between">
+              <span className="text-slate-500">Efectivo $ Esperado:</span>
+              <span className="font-mono-num font-bold text-[#111827]">
+                {formatUsd(totalEsperadoUsd)}
               </span>
             </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs text-gray-700">
-                <thead className="bg-gray-50/75 border-b border-gray-100 text-[10px] uppercase font-bold text-gray-400">
-                  <tr>
-                    <th className="py-3 px-4">Ticket</th>
-                    <th className="py-3 px-4">Hora</th>
-                    <th className="py-3 px-4">Cliente</th>
-                    <th className="py-3 px-4">Método</th>
-                    <th className="py-3 px-4 text-right">Venta ($)</th>
-                    <th className="py-3 px-4 text-right">Costo ($)</th>
-                    <th className="py-3 px-4 text-right">Ganancia ($)</th>
-                    <th className="py-3 px-4 text-right">Margen</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100 font-medium">
-                  {financesData.sales?.length === 0 ? (
-                    <tr>
-                      <td colSpan="8" className="py-10 text-center text-gray-400">
-                        No hay ventas registradas en el período seleccionado.
-                      </td>
-                    </tr>
-                  ) : (
-                    financesData.sales?.map((s) => (
-                      <tr key={s.id} className="hover:bg-gray-50/60 transition-colors">
-                        <td className="py-2.5 px-4 font-mono font-bold text-gray-900">
-                          {s.sale_number}
-                        </td>
-                        <td className="py-2.5 px-4 text-gray-400 whitespace-nowrap">
-                          {new Date(s.created_at).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })}
-                        </td>
-                        <td className="py-2.5 px-4 font-semibold text-gray-900">
-                          {s.customer_name}
-                        </td>
-                        <td className="py-2.5 px-4">
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-gray-100 text-gray-800 capitalize">
-                            {s.is_cashea ? '🟣 Cashea' : s.is_credit ? '🤝 Crédito' : s.payment_method?.replace('_', ' ')}
-                          </span>
-                        </td>
-                        <td className="py-2.5 px-4 text-right font-mono font-bold text-gray-900">
-                          ${s.total_usd_tienda.toFixed(2)}
-                        </td>
-                        <td className="py-2.5 px-4 text-right font-mono text-gray-500">
-                          ${s.sale_cost_usd?.toFixed(2)}
-                        </td>
-                        <td className="py-2.5 px-4 text-right font-mono font-bold text-[#00a884]">
-                          +${s.sale_profit_usd?.toFixed(2)}
-                        </td>
-                        <td className="py-2.5 px-4 text-right font-mono text-[11px] font-semibold text-indigo-600">
-                          {s.profit_margin_percent}%
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+            <div className="flex items-center justify-between">
+              <span className="text-slate-500">Diferencia $:</span>
+              <span
+                className={`font-mono-num font-bold ${
+                  diffUsd < 0
+                    ? 'text-rose-600'
+                    : diffUsd > 0
+                      ? 'text-emerald-600'
+                      : 'text-slate-500'
+                }`}
+              >
+                {diffUsd >= 0 ? '+' : ''}
+                {formatUsd(diffUsd)}
+              </span>
+            </div>
+            <div className="border-t border-slate-200/80 pt-2 flex items-center justify-between">
+              <span className="text-slate-500">Efectivo Bs Esperado:</span>
+              <span className="font-mono-num font-bold text-[#111827]">
+                {formatBs(totalEsperadoBs)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-slate-500">Diferencia Bs:</span>
+              <span
+                className={`font-mono-num font-bold ${
+                  diffBs < 0
+                    ? 'text-rose-600'
+                    : diffBs > 0
+                      ? 'text-emerald-600'
+                      : 'text-slate-500'
+                }`}
+              >
+                {diffBs >= 0 ? '+' : ''}
+                {formatBs(diffBs)}
+              </span>
             </div>
           </div>
-        </>
-      )}
 
-      {/* ========================================================= */}
-      {/* THERMAL PRINTER CIERRE Z FORMAT (CLEAN, NO BCV)            */}
-      {/* ========================================================= */}
-      <div id="printable-receipt" className="hidden">
-        <div style={{ textAlign: 'center', marginBottom: '8px' }}>
-          <div style={{ fontWeight: 'bold', fontSize: '13px' }}>{settings.store_name}</div>
-          <div style={{ fontSize: '10px' }}>RIF: {settings.rif}</div>
-          <div style={{ fontSize: '10px' }}>{settings.phone}</div>
-          <div style={{ fontSize: '11px', fontWeight: 'bold', marginTop: '4px' }}>CIERRE FINANCIERO (Z)</div>
-          <div style={{ fontSize: '10px' }}>Período: {startDate} {startDate !== endDate ? `al ${endDate}` : ''}</div>
-          <div style={{ fontSize: '10px' }}>Cajero: {currentUser?.name || 'Admin'}</div>
-        </div>
-        <div style={{ borderTop: '1px dashed #000', margin: '4px 0' }} />
-        {financesData && (
-          <div style={{ fontSize: '10px', lineHeight: '1.4' }}>
-            <div>Total Tickets: {financesData.total_tickets}</div>
-            <div>Total Ventas USD: ${financesData.total_sales_usd.toFixed(2)}</div>
-            <div>Total Bolívares: Bs. {financesData.total_sales_bs.toLocaleString('es-VE', { minimumFractionDigits: 2 })}</div>
-            <div style={{ borderTop: '1px dashed #000', margin: '4px 0' }} />
-            <div>💵 Efectivo USD: ${financesData.methods.efectivo_usd.toFixed(2)}</div>
-            <div>🏦 Zelle USD: ${financesData.methods.zelle_usd.toFixed(2)}</div>
-            <div>🟡 Binance USDT: ${financesData.methods.binance_usd.toFixed(2)}</div>
-            <div>🟣 Cashea: ${(financesData.methods.cashea_initial_usd + financesData.methods.cashea_financed_usd).toFixed(2)}</div>
-            <div>📱 Pago Móvil: Bs. {financesData.methods.pago_movil_bs.toLocaleString('es-VE')}</div>
-            <div>💳 Punto Venta: Bs. {financesData.methods.punto_bs.toLocaleString('es-VE')}</div>
-            <div>🪙 Efectivo Bs: Bs. {financesData.methods.efectivo_bs.toLocaleString('es-VE')}</div>
-            <div>🤝 Ventas a Crédito: ${financesData.methods.credito_total_usd.toFixed(2)}</div>
-            <div style={{ borderTop: '1px dashed #000', margin: '4px 0' }} />
-            <div>Costo Mercancía: ${financesData.total_cost_usd.toFixed(2)}</div>
-            <div style={{ fontWeight: 'bold', fontSize: '11px' }}>Ganancia Real: ${financesData.gross_profit_usd.toFixed(2)}</div>
-            <div style={{ fontWeight: 'bold' }}>Margen: {financesData.profit_margin_percent}%</div>
-          </div>
-        )}
-        <div style={{ borderTop: '1px dashed #000', margin: '4px 0' }} />
-        <div style={{ textAlign: 'center', fontSize: '9px', marginTop: '6px' }}>
-          Reporte emitido por Sistema POS
-        </div>
+          {/* Botón Guardar Cierre */}
+          <button
+            type="button"
+            disabled={submittingClose}
+            onClick={handleSaveCloseout}
+            className="w-full py-3 rounded-xl bg-[#074E4A] hover:bg-[#053E3B] text-white text-xs font-semibold flex items-center justify-center gap-2 transition-colors disabled:opacity-50 cursor-pointer shadow-xs"
+          >
+            <Lock className="w-3.5 h-3.5" />
+            <span>{submittingClose ? 'Registrando Cierre...' : closeSuccess ? '✓ ¡Cierre Z Guardado!' : 'Guardar y Cerrar Turno (Cierre Z)'}</span>
+          </button>
+        </section>
       </div>
     </div>
   );

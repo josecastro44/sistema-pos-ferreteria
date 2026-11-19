@@ -117,7 +117,7 @@ export default function CustomersView({
       <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-5 shadow-xs flex flex-wrap items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-emerald-50 text-[#00a884] flex items-center justify-center font-bold">
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 text-[#074E4A] flex items-center justify-center font-bold">
               <Users className="w-5 h-5" />
             </div>
             <div>
@@ -135,13 +135,13 @@ export default function CustomersView({
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Buscar por cédula, nombre o teléfono..."
-              className="pl-9 pr-3 py-1.5 bg-gray-50 border border-gray-200/80 rounded-xl text-xs text-gray-800 w-64 sm:w-72 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#00a884]/20 focus:border-[#00a884]"
+              className="pl-9 pr-3 py-1.5 bg-gray-50 border border-gray-200/80 rounded-xl text-xs text-gray-800 w-64 sm:w-72 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#074E4A]/20 focus:border-[#074E4A]"
             />
           </div>
 
           <button
             onClick={openNewCustomerModal}
-            className="bg-[#00a884] hover:bg-[#008f6f] text-white font-semibold px-4 py-2 rounded-xl text-xs flex items-center gap-2 shadow-xs transition-all cursor-pointer"
+            className="bg-[#074E4A] hover:bg-[#053E3B] text-white font-semibold px-4 py-2 rounded-xl text-xs flex items-center gap-2 shadow-xs transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Nuevo Cliente</span>
@@ -215,7 +215,7 @@ export default function CustomersView({
                         {/* Botón rápido para vender a este cliente en el POS */}
                         <button
                           onClick={() => onSelectCustomerForSale(cust)}
-                          className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-[#00a884] rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                          className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-[#074E4A] rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
                           title="Iniciar venta con este cliente en el POS"
                         >
                           <ShoppingCart className="w-3 h-3" />
@@ -224,7 +224,7 @@ export default function CustomersView({
 
                         <button
                           onClick={() => openEditCustomerModal(cust)}
-                          className="p-1.5 text-gray-400 hover:text-[#00a884] hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
+                          className="p-1.5 text-gray-400 hover:text-[#074E4A] hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
                           title="Editar"
                         >
                           <Edit className="w-3.5 h-3.5" />
@@ -253,7 +253,7 @@ export default function CustomersView({
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-gray-100">
               <div className="flex items-center gap-2">
-                <Users className="w-5 h-5 text-[#00a884]" />
+                <Users className="w-5 h-5 text-[#074E4A]" />
                 <h3 className="font-bold text-base text-gray-900">
                   {editingCustomer ? 'Editar Datos del Cliente' : 'Registrar Nuevo Cliente'}
                 </h3>
@@ -275,7 +275,7 @@ export default function CustomersView({
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="Ej: Juan Pérez o Constructora Ávila C.A."
-                  className="w-full p-2.5 bg-gray-50 border border-gray-200/80 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#00a884]/20 focus:border-[#00a884]"
+                  className="w-full p-2.5 bg-gray-50 border border-gray-200/80 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#074E4A]/20 focus:border-[#074E4A]"
                 />
               </div>
 
@@ -287,7 +287,7 @@ export default function CustomersView({
                   value={formData.id_card}
                   onChange={(e) => setFormData({ ...formData, id_card: e.target.value })}
                   placeholder="Ej: V-18456789 o J-12345678-0"
-                  className="w-full p-2.5 bg-gray-50 border border-gray-200/80 rounded-xl font-mono focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#00a884]/20 focus:border-[#00a884]"
+                  className="w-full p-2.5 bg-gray-50 border border-gray-200/80 rounded-xl font-mono focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#074E4A]/20 focus:border-[#074E4A]"
                 />
               </div>
 
@@ -298,7 +298,7 @@ export default function CustomersView({
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                   placeholder="Ej: 0414-1234567"
-                  className="w-full p-2.5 bg-gray-50 border border-gray-200/80 rounded-xl font-mono focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#00a884]/20 focus:border-[#00a884]"
+                  className="w-full p-2.5 bg-gray-50 border border-gray-200/80 rounded-xl font-mono focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#074E4A]/20 focus:border-[#074E4A]"
                 />
               </div>
 
@@ -309,7 +309,7 @@ export default function CustomersView({
                   value={formData.address}
                   onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                   placeholder="Ej: Sector Centro, Calle 5"
-                  className="w-full p-2.5 bg-gray-50 border border-gray-200/80 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#00a884]/20 focus:border-[#00a884]"
+                  className="w-full p-2.5 bg-gray-50 border border-gray-200/80 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#074E4A]/20 focus:border-[#074E4A]"
                 />
               </div>
 
@@ -320,7 +320,7 @@ export default function CustomersView({
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   placeholder="cliente@ejemplo.com"
-                  className="w-full p-2.5 bg-gray-50 border border-gray-200/80 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#00a884]/20 focus:border-[#00a884]"
+                  className="w-full p-2.5 bg-gray-50 border border-gray-200/80 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#074E4A]/20 focus:border-[#074E4A]"
                 />
               </div>
 
@@ -334,7 +334,7 @@ export default function CustomersView({
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 rounded-xl bg-[#00a884] hover:bg-[#008f6f] text-white font-semibold shadow-xs"
+                  className="flex-1 py-2.5 rounded-xl bg-[#074E4A] hover:bg-[#053E3B] text-white font-semibold shadow-xs"
                 >
                   Guardar Cliente
                 </button>
@@ -377,3 +377,4 @@ export default function CustomersView({
     </div>
   );
 }
+

@@ -101,7 +101,7 @@ export default function PosView({
             <Box className="w-3.5 h-3.5" />
             <span>{activeProducts.length} productos</span>
             <span>•</span>
-            <span className="text-[#00a884] font-semibold">[F2] para buscar</span>
+            <span className="text-[#074E4A] font-semibold">[F2] para buscar</span>
           </div>
         </div>
 
@@ -144,7 +144,7 @@ export default function PosView({
                   : 'text-gray-500 hover:text-gray-900'
               }`}
             >
-              <LayoutGrid className="w-3.5 h-3.5 text-[#00a884]" />
+              <LayoutGrid className="w-3.5 h-3.5 text-[#074E4A]" />
               <span className="hidden sm:inline">Cuadrícula</span>
             </button>
             <button
@@ -155,7 +155,7 @@ export default function PosView({
                   : 'text-gray-500 hover:text-gray-900'
               }`}
             >
-              <List className="w-3.5 h-3.5 text-[#00a884]" />
+              <List className="w-3.5 h-3.5 text-[#074E4A]" />
               <span className="hidden sm:inline">Lista</span>
             </button>
           </div>
@@ -164,7 +164,7 @@ export default function PosView({
           {cart.length > 0 && (
             <button
               onClick={onOpenCheckout}
-              className="bg-[#00a884] hover:bg-[#008f6f] text-white font-semibold px-3.5 py-1.5 rounded-xl text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+              className="bg-[#074E4A] hover:bg-[#053E3B] text-white font-semibold px-3.5 py-1.5 rounded-xl text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
             >
               <DollarSign className="w-3.5 h-3.5" />
               <span>Cobrar (${cartTotals.total_usd_tienda.toFixed(2)})</span>
@@ -181,10 +181,10 @@ export default function PosView({
           <button
             key={cat}
             onClick={() => setSelectedCategory(cat)}
-            className={`px-3 py-1 rounded-xl font-medium whitespace-nowrap transition-all border text-xs cursor-pointer ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
               selectedCategory === cat
-                ? 'bg-white border-gray-300 text-[#00a884] font-semibold shadow-xs ring-1 ring-[#00a884]/15'
-                : 'bg-white border-gray-200/80 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
+                ? 'bg-[#074E4A] text-white shadow-xs'
+                : 'bg-white text-slate-600 hover:text-[#111827] border border-slate-100 hover:border-slate-200'
             }`}
           >
             {cat}
@@ -222,7 +222,7 @@ export default function PosView({
                     className={`bg-white rounded-xl border transition-all cursor-pointer flex flex-col justify-between p-2.5 sm:p-3 group relative ${
                       isCasheaActive
                         ? 'border-purple-200 hover:border-purple-500 hover:shadow-purple-100 shadow-xs'
-                        : 'border-gray-100 hover:border-[#00a884]/40 hover:shadow-sm'
+                        : 'border-gray-100 hover:border-[#074E4A]/40 hover:shadow-sm'
                     }`}
                   >
                     <div>
@@ -259,7 +259,7 @@ export default function PosView({
                         {prod.category}
                       </div>
                       <h4
-                        className="font-bold text-xs text-gray-900 group-hover:text-[#00a884] transition-colors line-clamp-2 leading-snug mt-0.5"
+                        className="font-bold text-xs text-gray-900 group-hover:text-[#074E4A] transition-colors line-clamp-2 leading-snug mt-0.5"
                         title={prod.name}
                       >
                         {prod.name}
@@ -329,7 +329,7 @@ export default function PosView({
                         </td>
                         <td className="py-2 font-mono text-[11px] font-medium text-gray-500">{prod.code}</td>
                         <td className="py-2">
-                          <div className="font-bold text-xs text-gray-900 group-hover:text-[#00a884] transition-colors">
+                          <div className="font-bold text-xs text-gray-900 group-hover:text-[#074E4A] transition-colors">
                             {prod.name}
                           </div>
                           <div className="text-[10px] text-gray-400">{prod.category} • [{prod.unit}]</div>
@@ -349,7 +349,7 @@ export default function PosView({
                           ${displayPriceUsd.toFixed(2)}
                           {isCasheaActive && <span className="ml-1 text-[9px] text-purple-700 font-bold">Cashea</span>}
                         </td>
-                        <td className="py-2 text-right font-mono font-bold text-[#00a884] text-xs">
+                        <td className="py-2 text-right font-mono font-bold text-[#074E4A] text-xs">
                           Bs. {displayPriceBs.toLocaleString('es-VE')}
                         </td>
                         <td className="py-2 text-right font-mono font-bold text-indigo-700 text-xs bg-indigo-50/40">
@@ -371,7 +371,7 @@ export default function PosView({
           {/* Header */}
           <div className="flex items-center justify-between pb-2.5 border-b border-gray-100">
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-lg bg-emerald-50 text-[#00a884] flex items-center justify-center font-bold">
+              <div className="w-6 h-6 rounded-lg bg-emerald-50 text-[#074E4A] flex items-center justify-center font-bold">
                 <ShoppingCart className="w-3.5 h-3.5" />
               </div>
               <h3 className="font-bold text-xs sm:text-sm text-gray-900">Orden de Venta</h3>
@@ -407,7 +407,7 @@ export default function PosView({
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
                 placeholder="Cliente Mostrador o buscar..."
-                className="w-full px-2.5 py-1.5 bg-gray-50 border border-gray-200/80 rounded-xl text-xs font-medium text-gray-900 placeholder:text-gray-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#00a884]/20 focus:border-[#00a884]"
+                className="w-full px-2.5 py-1.5 bg-gray-50 border border-gray-200/80 rounded-xl text-xs font-medium text-gray-900 placeholder:text-gray-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#074E4A]/20 focus:border-[#074E4A]"
               />
               <datalist id="customers-datalist">
                 {customers.map(c => (
@@ -462,7 +462,7 @@ export default function PosView({
                     <div className="font-mono font-bold text-xs text-gray-900">
                       ${(item.price_usd_tienda * item.quantity).toFixed(2)}
                     </div>
-                    <div className="font-mono text-[10px] text-[#00a884]">
+                    <div className="font-mono text-[10px] text-[#074E4A]">
                       Bs. {(item.price_bs * item.quantity).toLocaleString('es-VE')}
                     </div>
                   </div>
@@ -478,39 +478,41 @@ export default function PosView({
             )}
           </div>
 
-          {/* Totals Breakdown (Clean, Zero BCV Clutter!) */}
+          {/* Totals Breakdown (Deep Forest Teal Accent Card) */}
           <div className="pt-2 border-t border-gray-100 space-y-2">
-            <div className="p-3 rounded-xl bg-gray-50 border border-gray-100 space-y-1.5">
-              <div className="flex justify-between items-baseline">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Total Dólares:</span>
-                <span className="text-2xl font-black font-mono text-gray-900 tracking-tight">
+            <div className="deep-teal-card rounded-2xl p-4 text-white">
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="text-xs font-medium text-emerald-100/85">
+                  Total Dólares
+                </span>
+                <span className="font-mono-num font-bold text-[24px] sm:text-[26px] tracking-tight">
                   ${cartTotals.total_usd_tienda.toFixed(2)}
                 </span>
               </div>
 
-              <div className="h-px bg-gray-200/60" />
-
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-gray-500 font-medium">Equivalente en Bolívares:</span>
-                <span className="font-mono font-black text-[#00a884] text-sm">
-                  Bs. {cartTotals.total_bs.toLocaleString('es-VE', { minimumFractionDigits: 2 })}
+              <div className="flex items-center justify-between mt-2 pt-2.5 border-t border-white/10 text-xs">
+                <span className="text-emerald-100/80">Equivalente Bolívares</span>
+                <span className="font-mono-num font-bold text-[#BEF264]">
+                  Bs. {cartTotals.total_bs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
               </div>
 
-              <div className="flex justify-between items-center text-[10px] text-gray-400 pt-0.5">
-                <span>Tasa de Cambio:</span>
-                <span className="font-mono font-medium">Bs. {Number(settings?.tasa_interna || 960).toFixed(2)} / $</span>
+              <div className="flex items-center justify-between mt-1 text-[11px] text-emerald-100/70">
+                <span>Referencia BCV (Bs. {Number(settings?.tasa_bcv || 866.56).toFixed(2)})</span>
+                <span className="font-mono-num">
+                  ${(cartTotals.total_bs / Number(settings?.tasa_bcv || 866.56)).toFixed(2)}
+                </span>
               </div>
             </div>
 
             {/* Presupuesto Button & Cobrar Button */}
             <div className="space-y-1.5 pt-0.5">
-              <div className="flex gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={clearCart}
                   disabled={cart.length === 0}
-                  className="px-3 py-2 rounded-xl border border-gray-200 text-gray-500 hover:bg-gray-50 text-xs font-medium transition-all disabled:opacity-40 cursor-pointer"
+                  className="py-2.5 px-3 rounded-xl bg-[#F4F6F8] hover:bg-slate-200/80 text-slate-600 font-semibold text-xs transition-colors disabled:opacity-40 cursor-pointer"
                 >
                   Vaciar
                 </button>
@@ -518,8 +520,8 @@ export default function PosView({
                   type="button"
                   onClick={onGenerateQuote}
                   disabled={cart.length === 0}
-                  className="flex-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold py-2 px-3 rounded-xl border border-indigo-200/60 transition-all flex items-center justify-center gap-1.5 text-xs disabled:opacity-40 cursor-pointer"
-                  title="Generar cotización sin descontar inventario"
+                  className="py-2.5 px-3 rounded-xl border border-[#074E4A]/25 text-[#074E4A] hover:bg-[#F2F7F6] font-semibold text-xs flex items-center justify-center gap-1.5 disabled:opacity-40 transition-colors cursor-pointer"
+                  title="Generar cotización formal sin descontar inventario"
                 >
                   <FileText className="w-3.5 h-3.5" />
                   <span>Presupuesto</span>
@@ -530,13 +532,13 @@ export default function PosView({
                 type="button"
                 onClick={onOpenCheckout}
                 disabled={cart.length === 0}
-                className={`w-full text-white font-bold py-2.5 px-3 rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 text-xs disabled:opacity-40 cursor-pointer ${
+                className={`w-full py-3.5 px-4 rounded-xl text-white font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-45 cursor-pointer transition-colors shadow-sm ${
                   isCasheaActive
                     ? 'bg-purple-600 hover:bg-purple-700'
-                    : 'bg-[#00a884] hover:bg-[#008f6f]'
+                    : 'bg-[#074E4A] hover:bg-[#053E3B]'
                 }`}
               >
-                <DollarSign className="w-3.5 h-3.5" />
+                <DollarSign className="w-4 h-4" />
                 <span>Cobrar Orden [F4]</span>
               </button>
             </div>
@@ -556,7 +558,7 @@ export default function PosView({
             {/* Left: Cart Icon with Badge & Prices */}
             <div className="flex items-center gap-3">
               <div className="relative">
-                <div className="w-10 h-10 rounded-full bg-[#00a884] flex items-center justify-center text-white shadow-md">
+                <div className="w-10 h-10 rounded-full bg-[#074E4A] flex items-center justify-center text-white shadow-md">
                   <ShoppingCart className="w-5 h-5" />
                 </div>
                 <span className="absolute -top-1 -right-1 bg-white text-gray-900 font-black text-[11px] w-5 h-5 rounded-full flex items-center justify-center shadow-xs border border-gray-200">
@@ -568,7 +570,7 @@ export default function PosView({
                   <span className="text-base sm:text-lg font-black font-mono text-white tracking-tight">
                     ${cartTotals.total_usd_tienda.toFixed(2)}
                   </span>
-                  <span className="text-xs font-bold font-mono text-[#00a884]">
+                  <span className="text-xs font-bold font-mono text-[#074E4A]">
                     (Bs. {Math.round(cartTotals.total_bs).toLocaleString('es-VE')})
                   </span>
                 </div>
@@ -585,7 +587,7 @@ export default function PosView({
                 e.stopPropagation();
                 onOpenCheckout();
               }}
-              className="bg-[#00a884] hover:bg-[#008f6f] active:scale-95 text-white font-bold px-4 py-2.5 rounded-xl text-xs sm:text-sm flex items-center gap-1.5 shadow-md transition-all cursor-pointer shrink-0"
+              className="bg-[#074E4A] hover:bg-[#053E3B] active:scale-95 text-white font-bold px-4 py-2.5 rounded-xl text-xs sm:text-sm flex items-center gap-1.5 shadow-md transition-all cursor-pointer shrink-0"
             >
               <span>Cobrar</span>
               <ArrowRight className="w-4 h-4" />
@@ -610,7 +612,7 @@ export default function PosView({
             {/* Header */}
             <div className="p-4 sm:p-5 border-b border-gray-100 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-[#00a884] flex items-center justify-center">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-[#074E4A] flex items-center justify-center">
                   <ShoppingCart className="w-5 h-5" />
                 </div>
                 <div>
@@ -653,7 +655,7 @@ export default function PosView({
                 <button
                   type="button"
                   onClick={() => setIsNewCustomerModalOpen(true)}
-                  className="text-xs font-bold text-[#00a884] hover:text-[#008f6f] flex items-center gap-1 cursor-pointer"
+                  className="text-xs font-bold text-[#074E4A] hover:text-[#053E3B] flex items-center gap-1 cursor-pointer"
                 >
                   <UserPlus className="w-3.5 h-3.5" />
                   <span>+ Nuevo</span>
@@ -662,7 +664,7 @@ export default function PosView({
               <select
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
-                className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#00a884]/20 focus:border-[#00a884] cursor-pointer shadow-2xs"
+                className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#074E4A]/20 focus:border-[#074E4A] cursor-pointer shadow-2xs"
               >
                 <option value="Cliente Mostrador">Cliente Mostrador (Venta Rápida)</option>
                 {customers.map(c => (
@@ -731,8 +733,8 @@ export default function PosView({
               </div>
 
               <div className="bg-emerald-50/80 border border-emerald-100 rounded-xl p-3 flex items-center justify-between">
-                <span className="text-[#00a884] font-bold text-xs">Total en Bolívares:</span>
-                <span className="font-black font-mono text-[#00a884] text-base">
+                <span className="text-[#074E4A] font-bold text-xs">Total en Bolívares:</span>
+                <span className="font-black font-mono text-[#074E4A] text-base">
                   Bs. {cartTotals.total_bs.toLocaleString('es-VE', { minimumFractionDigits: 2 })}
                 </span>
               </div>
@@ -756,7 +758,7 @@ export default function PosView({
                     setIsCartDrawerOpen(false);
                     onOpenCheckout();
                   }}
-                  className="flex-1 bg-[#00a884] hover:bg-[#008f6f] active:scale-98 text-white font-bold py-3.5 px-4 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 text-xs sm:text-sm cursor-pointer"
+                  className="flex-1 bg-[#074E4A] hover:bg-[#053E3B] active:scale-98 text-white font-bold py-3.5 px-4 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 text-xs sm:text-sm cursor-pointer"
                 >
                   <CreditCard className="w-4 h-4" />
                   <span>💳 Cobrar e Imprimir Factura</span>
@@ -779,7 +781,7 @@ export default function PosView({
           <div className="relative bg-white w-full max-w-sm rounded-2xl shadow-2xl z-10 p-4 sm:p-5 border border-gray-100">
             <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-3">
               <h3 className="font-bold text-sm text-gray-900 flex items-center gap-2">
-                <UserPlus className="w-4 h-4 text-[#00a884]" />
+                <UserPlus className="w-4 h-4 text-[#074E4A]" />
                 <span>Nuevo Cliente / Taller</span>
               </h3>
               <button
@@ -802,7 +804,7 @@ export default function PosView({
                   value={newCustomerForm.name}
                   onChange={(e) => setNewCustomerForm({ ...newCustomerForm, name: e.target.value })}
                   placeholder="Ej: Inversiones Los Andes / Taller Juan"
-                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#00a884]/20 focus:border-[#00a884]"
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#074E4A]/20 focus:border-[#074E4A]"
                 />
               </div>
 
@@ -816,7 +818,7 @@ export default function PosView({
                   value={newCustomerForm.id_card}
                   onChange={(e) => setNewCustomerForm({ ...newCustomerForm, id_card: e.target.value })}
                   placeholder="Ej: V-12345678 o J-123456789"
-                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#00a884]/20 focus:border-[#00a884]"
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#074E4A]/20 focus:border-[#074E4A]"
                 />
               </div>
 
@@ -829,7 +831,7 @@ export default function PosView({
                   value={newCustomerForm.phone}
                   onChange={(e) => setNewCustomerForm({ ...newCustomerForm, phone: e.target.value })}
                   placeholder="Ej: 0414-1234567"
-                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#00a884]/20 focus:border-[#00a884]"
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#074E4A]/20 focus:border-[#074E4A]"
                 />
               </div>
 
@@ -844,7 +846,7 @@ export default function PosView({
                 <button
                   type="submit"
                   disabled={isCreatingCustomer}
-                  className="flex-1 py-2 rounded-xl bg-[#00a884] hover:bg-[#008f6f] text-white text-xs font-bold transition-all shadow-xs cursor-pointer disabled:opacity-50"
+                  className="flex-1 py-2 rounded-xl bg-[#074E4A] hover:bg-[#053E3B] text-white text-xs font-bold transition-all shadow-xs cursor-pointer disabled:opacity-50"
                 >
                   {isCreatingCustomer ? 'Guardando...' : 'Guardar Cliente'}
                 </button>
@@ -856,3 +858,4 @@ export default function PosView({
     </div>
   );
 }
+

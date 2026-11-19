@@ -1,367 +1,523 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   LayoutGrid,
-  Store,
+  ShoppingBag,
+  FileText,
+  Wallet,
   Users,
-  PackagePlus,
   Pencil,
-  Boxes,
-  ShoppingCart,
+  Package,
+  Receipt,
   TrendingUp,
-  DollarSign,
-  UserCheck,
-  Settings,
+  PlusSquare,
   Search,
   Bell,
-  Coins,
-  ChevronDown,
+  RefreshCw,
   Menu,
   X,
-  Sparkles,
-  FileText,
-  CreditCard
+  UserCheck,
+  Settings,
+  ChevronDown
 } from 'lucide-react';
+
+const VIEW_HEADERS = {
+  dashboard: {
+    title: 'Bienvenido, Admin Hebert',
+    subtitle: 'Resumen financiero y flujo de caja de tu ferretería hoy',
+  },
+  pos: {
+    title: 'Punto de Venta',
+    subtitle: 'Facturación rápida en Divisas, Bolívares, BCV y Cashea',
+  },
+  quotes: {
+    title: 'Presupuestos & Cotizaciones',
+    subtitle: 'Cotizaciones formales con carga directa a caja',
+  },
+  credits: {
+    title: 'Cuentas por Cobrar',
+    subtitle: 'Control de créditos, abonos parciales y vencimientos',
+  },
+  customers: {
+    title: 'Directorio de Clientes',
+    subtitle: 'Clientes registrados para facturación y créditos',
+  },
+  'register-product': {
+    title: 'Registrar Producto',
+    subtitle: 'Alta de nuevos artículos en el catálogo general',
+  },
+  'edit-product': {
+    title: 'Editor & Gestión de Catálogo',
+    subtitle: 'Precios, visibilidad en caja, proveedor y reposición',
+  },
+  inventory: {
+    title: 'Inventario de Productos',
+    subtitle: 'Existencias, costos, sinónimos y reposición de stock',
+  },
+  sales: {
+    title: 'Historial de Facturación',
+    subtitle: 'Operaciones registradas y reimpresión 58mm',
+  },
+  finances: {
+    title: 'Finanzas & Cierre Z',
+    subtitle: 'Ingresos, costos, rentabilidad y arqueo diario',
+  },
+  reports: {
+    title: 'Finanzas & Cierre Z',
+    subtitle: 'Ingresos, costos, rentabilidad y arqueo diario',
+  },
+  users: {
+    title: 'Gestión de Usuarios',
+    subtitle: 'Cajeros, administradores y permisos de acceso',
+  },
+  settings: {
+    title: 'Configuración del Sistema',
+    subtitle: 'Parámetros de tienda, impresoras y tasas de cambio',
+  },
+};
 
 export default function MainLayout({
   activeTab,
   setActiveTab,
   cartCount = 0,
   lowStockCount = 0,
-  settings,
+  settings = {},
   onOpenRatesModal,
   onOpenNewProductModal,
   currentUser,
   onSwitchUser,
-  searchQuery,
+  searchQuery = '',
   onSearchChange,
   children
 }) {
-  const [sidebarOpen, setSidebarOpen] = React.useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
-  const [currentTime, setCurrentTime] = React.useState(
-    new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })
-  );
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
 
-  React.useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const toggleSidebar = () => {
-    if (window.innerWidth < 1024) {
-      setSidebarOpen(!sidebarOpen);
-    } else {
-      setSidebarCollapsed(!sidebarCollapsed);
-    }
+  const header = VIEW_HEADERS[activeTab] || {
+    title: 'Ferretería Hebert',
+    subtitle: 'Sistema POS e Inventario Comercial'
   };
 
-  // Nav Item Helper
-  const renderNavItem = (key, label, Icon, options = {}) => {
-    const isActive = activeTab === key;
-    const badge = options.badge;
-    const onClick = options.onClick || (() => {
-      setActiveTab(key);
-      setSidebarOpen(false);
-    });
+  const tasaTienda = Number(settings.tasa_interna || 960);
+  const tasaBcv = Number(settings.tasa_bcv || 866.56);
 
-    return (
-      <button
-        key={key}
-        onClick={onClick}
-        title={label}
-        className={`w-full flex items-center ${
-          sidebarCollapsed ? 'justify-center px-0' : 'justify-between px-3.5'
-        } py-2.5 rounded-2xl font-medium text-xs transition-all cursor-pointer ${
-          isActive
-            ? 'bg-[#00a884] text-white font-semibold shadow-xs shadow-[#00a884]/20'
-            : 'text-gray-700 hover:text-gray-950 hover:bg-gray-100/70'
-        }`}
-      >
-        <div className="flex items-center gap-3">
-          <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-gray-500'}`} />
-          {!sidebarCollapsed && <span className="tracking-tight">{label}</span>}
-        </div>
-        {!sidebarCollapsed && badge !== undefined && badge > 0 && (
-          <span
-            className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
-              isActive ? 'bg-white/25 text-white' : 'bg-amber-100 text-amber-800'
-            }`}
-          >
-            {badge}
-          </span>
-        )}
-      </button>
-    );
+  const formatBs = (val) => {
+    return `Bs. ${Number(val).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
+
+  const primaryItems = [
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutGrid },
+    { id: 'pos', label: 'Punto de Venta', icon: ShoppingBag, badge: cartCount },
+    { id: 'quotes', label: 'Presupuestos', icon: FileText },
+    { id: 'credits', label: 'Cuentas por Cobrar', icon: Wallet },
+  ];
+
+  const managementItems = [
+    { id: 'customers', label: 'Clientes', icon: Users },
+    { id: 'edit-product', label: 'Editar Producto', icon: Pencil },
+    { id: 'inventory', label: 'Inventario', icon: Package, badge: lowStockCount },
+    { id: 'sales', label: 'Ventas Realizadas', icon: Receipt },
+    { id: 'finances', label: 'Finanzas & Cierre Z', icon: TrendingUp },
+  ];
+
+  const configItems = [
+    { id: 'users', label: 'Usuarios', icon: UserCheck },
+    { id: 'settings', label: 'Configuración', icon: Settings },
+  ];
+
+  const handleNav = (tabId) => {
+    setActiveTab(tabId);
+    setMobileOpen(false);
   };
 
   return (
-    <div className="min-h-screen flex bg-[#f5f6fa] text-gray-900 font-sans antialiased">
+    <div className="min-h-screen flex bg-[#F6F8FA] text-[#111827] antialiased">
       {/* Mobile Backdrop */}
-      {sidebarOpen && (
+      {mobileOpen && (
         <div
-          onClick={() => setSidebarOpen(false)}
-          className="fixed inset-0 bg-gray-900/25 backdrop-blur-xs z-40 lg:hidden"
+          className="fixed inset-0 z-40 bg-slate-900/30 backdrop-blur-[1px] lg:hidden"
+          onClick={() => setMobileOpen(false)}
+          aria-hidden="true"
         />
       )}
 
       {/* ========================================================= */}
-      {/* SIDEBAR EXACTO AL ESTILO DE LA REFERENCIA                */}
+      {/* SIDEBAR CORPORATIVO — ESTILO DEEP TEAL FERRETERÍA HEBERT   */}
       {/* ========================================================= */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 bg-white border-r border-gray-100 flex flex-col justify-between shrink-0 transition-all duration-200 lg:static ${
-          sidebarCollapsed ? 'lg:w-16' : 'lg:w-60'
-        } ${sidebarOpen ? 'w-60 flex' : 'hidden lg:flex'} print:hidden`}
+        className={`fixed inset-y-0 left-0 z-50 w-[264px] shrink-0 bg-white border-r border-slate-100 flex flex-col justify-between transition-transform duration-200 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ${
+          mobileOpen ? 'translate-x-0' : '-translate-x-full'
+        } print:hidden`}
+        aria-label="Navegación principal"
       >
-        <div className={`p-4 space-y-4 overflow-y-auto ${sidebarCollapsed ? 'px-2' : ''}`}>
-          {/* Header del Negocio */}
-          <div className="space-y-2">
-            <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-between'}`}>
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#00a884] to-[#10b981] flex items-center justify-center text-white font-black text-xs shadow-xs shrink-0">
-                  BJ
-                </div>
-                {!sidebarCollapsed && (
-                  <div className="overflow-hidden">
-                    <h1 className="font-extrabold text-sm tracking-tight text-gray-900 truncate leading-tight">
-                      {settings.store_name || 'Bodega Jeym'}
-                    </h1>
-                    <p className="text-[10px] text-gray-400 font-medium">Sistema POS</p>
-                  </div>
-                )}
+        <div className="p-5 flex flex-col gap-5 overflow-y-auto">
+          {/* Brand Logo Header */}
+          <div className="flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => handleNav('dashboard')}
+              className="flex items-center gap-3 text-left group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#074E4A] rounded-xl p-1 -m-1"
+            >
+              <div className="w-9 h-9 rounded-xl bg-[#074E4A] flex items-center justify-center relative shadow-sm shrink-0">
+                <svg
+                  viewBox="0 0 24 24"
+                  className="w-5 h-5 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.1"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+                </svg>
+                <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-[#BEF264] border-2 border-white" />
               </div>
+              <div className="min-w-0">
+                <span className="font-display font-bold text-[17px] tracking-tight text-[#111827] block leading-tight whitespace-nowrap">
+                  {settings.store_name || 'Ferretería Hebert'}
+                </span>
+                <span className="text-[11px] font-medium text-slate-400 block leading-tight">
+                  Sistema POS
+                </span>
+              </div>
+            </button>
 
-              {/* Mobile close button */}
-              <button
-                onClick={() => setSidebarOpen(false)}
-                className="lg:hidden p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Pastilla de Tasa de Cambio (Estilo 💵 1$ = Bs 960,00) */}
-            {!sidebarCollapsed ? (
-              <button
-                onClick={onOpenRatesModal}
-                title="Haga clic para cambiar las tasas de cambio"
-                className="w-full py-1.5 px-3 rounded-xl bg-gray-50 hover:bg-gray-100 border border-gray-200/60 flex items-center justify-center gap-1.5 font-mono text-[11px] font-bold text-gray-800 transition-colors cursor-pointer group"
-              >
-                <span>💵</span>
-                <span>1$ = Bs {Number(settings.tasa_interna || 960).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-              </button>
-            ) : (
-              <button
-                onClick={onOpenRatesModal}
-                title="Cambiar Tasa de Cambio"
-                className="w-full flex justify-center p-1.5 rounded-xl bg-gray-50 hover:bg-gray-100 text-gray-700 transition-colors cursor-pointer"
-              >
-                <span className="text-xs">💵</span>
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => setMobileOpen(false)}
+              aria-label="Cerrar menú"
+              className="lg:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
 
-          {/* Menú de Botones Funcionales (Bloque Superior) */}
-          <div className="space-y-0.5">
-            {/* 1. Dashboard */}
-            {renderNavItem('dashboard', 'Dashboard', LayoutGrid)}
-
-            {/* 2. Punto de Venta */}
-            {renderNavItem('pos', 'Punto de Venta', Store, { badge: cartCount })}
-
-            {/* 3. Presupuestos (Cotizaciones) */}
-            {renderNavItem('quotes', 'Presupuestos', FileText)}
-
-            {/* 4. Cuentas por Cobrar (Créditos) */}
-            {renderNavItem('credits', 'Cuentas por Cobrar', CreditCard)}
-
-            {/* 5. Clientes */}
-            {renderNavItem('customers', 'Clientes', Users)}
-
-            {/* 6. Registrar Producto */}
-            {renderNavItem('register-product', 'Registrar Producto', PackagePlus, {
-              onClick: () => {
-                if (onOpenNewProductModal) onOpenNewProductModal();
-                setSidebarOpen(false);
-              }
+          {/* Primary Operations Nav */}
+          <nav className="flex flex-col gap-1" aria-label="Operación principal">
+            {primaryItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => handleNav(item.id)}
+                  aria-current={isActive ? 'page' : undefined}
+                  className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-[13.5px] transition-colors whitespace-nowrap cursor-pointer ${
+                    isActive
+                      ? 'bg-[#F2F7F6] text-[#111827] font-semibold'
+                      : 'text-slate-500 font-medium hover:text-[#111827] hover:bg-slate-50'
+                  }`}
+                >
+                  <span className="flex items-center gap-2.5 min-w-0">
+                    <span
+                      className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                        isActive
+                          ? 'bg-[#074E4A] text-white shadow-xs'
+                          : 'text-slate-400'
+                      }`}
+                    >
+                      <Icon className="w-4 h-4" />
+                    </span>
+                    <span className="whitespace-nowrap">{item.label}</span>
+                  </span>
+                  {typeof item.badge === 'number' && item.badge > 0 && (
+                    <span
+                      className={`text-[11px] font-mono-num font-semibold px-1.5 py-0.5 rounded-md ${
+                        isActive
+                          ? 'bg-[#074E4A]/10 text-[#074E4A]'
+                          : 'bg-slate-100 text-slate-500'
+                      }`}
+                    >
+                      {item.badge}
+                    </span>
+                  )}
+                </button>
+              );
             })}
+          </nav>
 
-            {/* 7. Editar Producto */}
-            {renderNavItem('edit-product', 'Editar Producto', Pencil)}
+          {/* Secondary Management Views */}
+          <div className="pt-3 border-t border-slate-100">
+            <p className="px-3 mb-2 text-[11px] font-medium text-slate-400">
+              Gestión & Finanzas
+            </p>
+            <nav className="flex flex-col gap-1" aria-label="Gestión">
+              {/* Registrar Producto Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (onOpenNewProductModal) onOpenNewProductModal();
+                  setMobileOpen(false);
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13.5px] text-slate-500 font-medium hover:text-[#111827] hover:bg-slate-50 transition-colors whitespace-nowrap cursor-pointer"
+              >
+                <span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-slate-400">
+                  <PlusSquare className="w-4 h-4" />
+                </span>
+                <span>Registrar Producto</span>
+              </button>
 
-            {/* 8. Inventario */}
-            {renderNavItem('inventory', 'Inventario', Boxes, { badge: lowStockCount })}
-
-            {/* 9. Ventas Realizadas */}
-            {renderNavItem('sales', 'Ventas Realizadas', ShoppingCart)}
-
-            {/* 10. Finanzas */}
-            {renderNavItem('finances', 'Finanzas & Cierre Z', TrendingUp)}
+              {managementItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = activeTab === item.id || (item.id === 'finances' && activeTab === 'reports');
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => handleNav(item.id)}
+                    aria-current={isActive ? 'page' : undefined}
+                    className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-[13.5px] transition-colors whitespace-nowrap cursor-pointer ${
+                      isActive
+                        ? 'bg-[#F2F7F6] text-[#111827] font-semibold'
+                        : 'text-slate-500 font-medium hover:text-[#111827] hover:bg-slate-50'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2.5 min-w-0">
+                      <span
+                        className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                          isActive
+                            ? 'bg-[#074E4A] text-white shadow-xs'
+                            : 'text-slate-400'
+                        }`}
+                      >
+                        <Icon className="w-4 h-4" />
+                      </span>
+                      <span className="whitespace-nowrap">{item.label}</span>
+                    </span>
+                    {typeof item.badge === 'number' && item.badge > 0 && (
+                      <span
+                        className={`text-[11px] font-mono-num font-semibold px-1.5 py-0.5 rounded-md ${
+                          isActive
+                            ? 'bg-[#074E4A]/10 text-[#074E4A]'
+                            : 'bg-rose-50 text-rose-600'
+                        }`}
+                      >
+                        {item.badge}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </nav>
           </div>
 
-          {/* Línea Divisoria */}
-          <div className="border-t border-gray-100 pt-1">
-            {/* Menú de Botones Funcionales (Bloque Inferior) */}
-            <div className="space-y-0.5">
-              {/* 9. Tasa de Cambio */}
-              {renderNavItem('rates', 'Tasa de Cambio', DollarSign, {
-                onClick: () => {
-                  if (onOpenRatesModal) onOpenRatesModal();
-                  setSidebarOpen(false);
-                }
+          {/* Config Section */}
+          <div className="pt-3 border-t border-slate-100">
+            <nav className="flex flex-col gap-1" aria-label="Sistema">
+              {configItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = activeTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => handleNav(item.id)}
+                    aria-current={isActive ? 'page' : undefined}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13.5px] transition-colors whitespace-nowrap cursor-pointer ${
+                      isActive
+                        ? 'bg-[#F2F7F6] text-[#111827] font-semibold'
+                        : 'text-slate-500 font-medium hover:text-[#111827] hover:bg-slate-50'
+                    }`}
+                  >
+                    <span
+                      className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                        isActive
+                          ? 'bg-[#074E4A] text-white shadow-xs'
+                          : 'text-slate-400'
+                      }`}
+                    >
+                      <Icon className="w-4 h-4" />
+                    </span>
+                    <span className="whitespace-nowrap">{item.label}</span>
+                  </button>
+                );
               })}
-
-              {/* 10. Usuarios */}
-              {renderNavItem('users', 'Usuarios', UserCheck)}
-
-              {/* 11. Configuración */}
-              {renderNavItem('settings', 'Configuración', Settings)}
-            </div>
+            </nav>
           </div>
         </div>
 
-        {/* Footer del Sidebar con Usuario Activo */}
-        <div className={`p-3 border-t border-gray-100 ${sidebarCollapsed ? 'px-2' : ''}`}>
-          {!sidebarCollapsed ? (
-            <div className="flex items-center justify-between p-2 rounded-xl bg-gray-50 border border-gray-100 text-xs">
-              <div className="flex items-center gap-2 overflow-hidden">
-                <div className="w-7 h-7 rounded-lg bg-[#00a884] text-white font-bold text-[11px] flex items-center justify-center shrink-0">
-                  {(currentUser?.name || 'AH').substring(0, 2).toUpperCase()}
-                </div>
-                <div className="overflow-hidden">
-                  <div className="font-bold text-gray-900 text-xs truncate leading-tight">
-                    {currentUser?.name || 'Admin Hebert'}
-                  </div>
-                  <div className="text-[10px] text-gray-400 capitalize">
-                    {currentUser?.role || 'Administrador'}
-                  </div>
-                </div>
-              </div>
-
-              {onSwitchUser && (
-                <button
-                  onClick={onSwitchUser}
-                  title="Cambiar de Cajero / Usuario"
-                  className="text-[10px] font-bold text-[#00a884] hover:text-[#008f6f] px-1.5 py-0.5 rounded bg-emerald-50 hover:bg-emerald-100 transition-colors cursor-pointer"
-                >
-                  Cambiar
-                </button>
-              )}
-            </div>
-          ) : (
+        {/* ========================================================= */}
+        {/* BOTTOM FEATURED DEEP-TEAL CARD — TASA TIENDA VIGENTE       */}
+        {/* ========================================================= */}
+        <div className="p-4 pt-2">
+          <div className="deep-teal-card rounded-2xl p-4 text-white relative overflow-hidden">
+            <div
+              className="absolute -right-6 -top-6 w-20 h-20 rounded-full bg-white/5 pointer-events-none"
+              aria-hidden="true"
+            />
+            <p className="text-[11px] text-emerald-100/80 font-medium">
+              Tasa Tienda Vigente
+            </p>
+            <p className="font-mono-num text-[17px] font-bold tracking-tight mt-0.5">
+              1$ = {formatBs(tasaTienda)}
+            </p>
+            <p className="text-[11px] font-mono-num text-emerald-100/75 mt-0.5 mb-3">
+              BCV: {formatBs(tasaBcv)}
+            </p>
             <button
-              onClick={onSwitchUser}
-              title={`Usuario: ${currentUser?.name || 'Admin'}`}
-              className="w-full flex justify-center p-2 rounded-xl bg-gray-50 hover:bg-gray-100 text-gray-700 transition-colors"
+              type="button"
+              onClick={onOpenRatesModal}
+              className="w-full flex items-center justify-center gap-2 bg-white text-[#074E4A] hover:bg-emerald-50 font-semibold text-xs py-2 px-3 rounded-xl transition-colors shadow-xs cursor-pointer"
             >
-              <div className="w-6 h-6 rounded-lg bg-[#00a884] text-white font-bold text-[10px] flex items-center justify-center">
-                {(currentUser?.name || 'A').substring(0, 1).toUpperCase()}
-              </div>
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Ajustar Tasas</span>
             </button>
-          )}
-
-          <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-between px-1'} text-[10px] text-gray-400 mt-2`}>
-            <span className="flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              {!sidebarCollapsed && <span className="font-medium text-gray-500">SQLite Local OK</span>}
-            </span>
-            {!sidebarCollapsed && <span className="font-mono text-gray-400">{currentTime}</span>}
           </div>
         </div>
       </aside>
 
       {/* ========================================================= */}
-      {/* HEADER SUPERIOR Y CONTENIDO CENTRAL                       */}
+      {/* MAIN CONTENT AREA & TOPBAR                                */}
       {/* ========================================================= */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* TOP HEADER */}
-        <header className="h-14 sm:h-15 bg-white border-b border-gray-100 px-4 sm:px-6 flex items-center justify-between gap-3 sticky top-0 z-30 print:hidden">
-          <div className="flex items-center gap-2.5">
-            {/* Toggle Sidebar Button */}
+        {/* TOPBAR EXACTA DE LA MAQUETA */}
+        <header className="bg-white border-b border-slate-100 px-4 sm:px-7 py-3.5 sm:py-4 flex items-center justify-between gap-4 shrink-0 relative z-30 print:hidden">
+          {/* Zone 1: Mobile Hamburger & Page Title */}
+          <div className="flex items-center gap-3 min-w-0 max-w-[300px] lg:max-w-[420px]">
             <button
-              onClick={toggleSidebar}
-              className="p-1.5 rounded-xl text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors cursor-pointer"
-              title="Alternar Menú Lateral"
+              type="button"
+              onClick={() => setMobileOpen(true)}
+              aria-label="Abrir menú lateral"
+              className="lg:hidden p-2 rounded-xl text-slate-600 hover:bg-slate-100 shrink-0 cursor-pointer"
             >
-              <Menu className="w-4 h-4" />
+              <Menu className="w-5 h-5" />
             </button>
+            <div className="min-w-0">
+              <h1 className="font-display font-bold text-[18px] sm:text-[19px] text-[#111827] tracking-tight truncate">
+                {header.title}
+              </h1>
+              <p className="text-[12px] text-slate-400 truncate hidden sm:block">
+                {header.subtitle}
+              </p>
+            </div>
+          </div>
 
-            {/* Clean Minimal Search Input */}
-            <div className="relative w-64 sm:w-80 md:w-96">
-              <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-2.5" />
+          {/* Zone 2: Clean Search Input */}
+          <div className="flex-1 min-w-[210px] max-w-sm hidden md:block">
+            <div className="relative">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
-                type="text"
+                id="global-pos-search"
+                type="search"
                 value={searchQuery}
                 onChange={onSearchChange}
-                placeholder="Buscar por código, '1/2', '3/4', nombre... [F2]"
-                className="w-full pl-9 pr-3 py-1.5 bg-gray-50/80 border border-gray-200/80 rounded-xl text-xs font-medium text-gray-900 placeholder:text-gray-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#00a884]/20 focus:border-[#00a884] transition-all"
+                placeholder="Buscar código, producto, cliente... [F2]"
+                className="w-full bg-[#F4F6F8] hover:bg-[#EFF2F5] focus:bg-white text-[13px] text-[#111827] placeholder:text-slate-400 pl-10 pr-4 py-2 rounded-xl border border-transparent focus:border-[#074E4A]/30 focus:outline-none transition-colors"
               />
             </div>
           </div>
 
-          {/* Right Header Controls */}
-          <div className="flex items-center gap-2.5 sm:gap-3">
-            {/* Quick Rates Pill */}
-            <div
-              onClick={onOpenRatesModal}
-              className="hidden lg:flex items-center gap-2 px-2.5 py-1 rounded-xl bg-gray-50 border border-gray-200/70 text-xs font-mono cursor-pointer hover:bg-gray-100 transition-colors"
-              title="Clic para cambiar tasas"
-            >
-              <span className="text-gray-400 font-sans text-[10px]">Tienda:</span>
-              <span className="font-bold text-gray-900 text-xs">Bs. {Number(settings.tasa_interna).toLocaleString('es-VE')}</span>
-              <span className="text-gray-300">|</span>
-              <span className="text-gray-400 font-sans text-[10px]">BCV:</span>
-              <span className="font-bold text-[#00a884] text-xs">Bs. {Number(settings.tasa_bcv).toLocaleString('es-VE')}</span>
-            </div>
-
-            {/* Settings button */}
+          {/* Zone 3: Rates Chip, Ir a Caja, Bell & User Chip */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            {/* Quick Rates Chip */}
             <button
-              onClick={() => setActiveTab('settings')}
-              className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-xl transition-colors cursor-pointer"
-              title="Ajustes"
+              type="button"
+              onClick={onOpenRatesModal}
+              className="hidden xl:flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-[#F4F6F8] hover:bg-[#EAF2F1] text-xs transition-colors whitespace-nowrap cursor-pointer"
+              title="Actualizar tasas de cambio"
             >
-              <Settings className="w-4 h-4" />
+              <RefreshCw className="w-3.5 h-3.5 text-[#074E4A]" />
+              <span className="text-slate-500">
+                Tienda: <strong className="font-mono-num text-[#111827]">{formatBs(tasaTienda)}</strong>
+              </span>
+              <span className="text-slate-300" aria-hidden="true">|</span>
+              <span className="text-slate-500">
+                BCV: <strong className="font-mono-num text-[#074E4A]">{formatBs(tasaBcv)}</strong>
+              </span>
             </button>
+
+            {/* Ir a Caja Button */}
+            {activeTab !== 'pos' && (
+              <button
+                type="button"
+                onClick={() => handleNav('pos')}
+                className="hidden sm:inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#074E4A] hover:bg-[#053E3B] text-white text-xs font-semibold transition-colors whitespace-nowrap shrink-0 shadow-xs cursor-pointer"
+              >
+                <ShoppingBag className="w-3.5 h-3.5" />
+                <span>Ir a Caja</span>
+              </button>
+            )}
 
             {/* Notifications Bell */}
             <div className="relative">
               <button
-                onClick={() => setActiveTab('inventory')}
-                className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-xl transition-colors cursor-pointer"
-                title="Notificaciones de stock"
+                type="button"
+                onClick={() => setNotifOpen(!notifOpen)}
+                aria-label="Notificaciones"
+                className="w-9 h-9 rounded-full bg-[#F4F6F8] hover:bg-slate-200/70 flex items-center justify-center text-slate-600 relative transition-colors cursor-pointer"
               >
                 <Bell className="w-4 h-4" />
+                {lowStockCount > 0 && (
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white" />
+                )}
               </button>
-              {lowStockCount > 0 && (
-                <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-amber-500" />
+
+              {notifOpen && (
+                <div className="absolute right-0 mt-2 w-72 bg-white rounded-2xl shadow-xl border border-slate-100 p-4 z-50">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-display font-semibold text-sm text-[#111827]">
+                      Alertas Operativas
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => setNotifOpen(false)}
+                      className="text-xs text-slate-400 hover:text-slate-700 cursor-pointer"
+                    >
+                      Cerrar
+                    </button>
+                  </div>
+                  {lowStockCount > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNotifOpen(false);
+                        handleNav('inventory');
+                      }}
+                      className="w-full flex items-start gap-2.5 p-2.5 rounded-xl bg-amber-50/70 hover:bg-amber-50 text-left transition-colors cursor-pointer"
+                    >
+                      <Package className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-xs font-semibold text-[#111827]">
+                          Stock Bajo
+                        </p>
+                        <p className="text-[11px] text-slate-500 mt-0.5">
+                          Hay {lowStockCount} artículos con existencias mínimas.
+                        </p>
+                      </div>
+                    </button>
+                  ) : (
+                    <p className="text-xs text-slate-400 py-2 text-center">
+                      Todo en orden, sin alertas activas.
+                    </p>
+                  )}
+                </div>
               )}
             </div>
 
-            {/* Profile Avatar & Switcher */}
+            {/* User Profile Chip */}
             <div
               onClick={onSwitchUser}
-              className="flex items-center gap-2 pl-2 border-l border-gray-100 cursor-pointer hover:opacity-80 transition-opacity"
-              title="Clic para cambiar de cajero"
+              className="flex items-center gap-2 pl-2 border-l border-slate-100 cursor-pointer hover:opacity-85 transition-opacity"
+              title="Cambiar cajero o usuario"
             >
-              <div className="w-8 h-8 rounded-xl bg-[#00a884] text-white font-bold text-xs flex items-center justify-center shadow-xs">
+              <div className="w-8 h-8 rounded-full bg-[#074E4A] text-white font-bold text-xs flex items-center justify-center shadow-xs">
                 {(currentUser?.name || 'AH').substring(0, 2).toUpperCase()}
               </div>
               <div className="hidden sm:block text-left">
-                <div className="text-xs font-bold text-gray-900 leading-tight">
+                <div className="text-xs font-semibold text-[#111827] leading-tight">
                   {currentUser?.name || 'Admin Hebert'}
                 </div>
-                <div className="text-[10px] text-gray-400 font-medium leading-none mt-0.5 capitalize">
+                <div className="text-[11px] text-slate-400 font-medium leading-none mt-0.5 capitalize">
                   {currentUser?.role || 'Administrador'}
                 </div>
               </div>
-              <ChevronDown className="w-3 h-3 text-gray-400 hidden sm:block" />
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400 hidden sm:block" />
             </div>
           </div>
         </header>
 
-        {/* Page Content */}
-        <main className="flex-1 p-3.5 sm:p-5 overflow-y-auto">
+        {/* Page Content Container */}
+        <main className="flex-1 p-4 sm:p-6 lg:p-7 overflow-y-auto">
           {children}
         </main>
       </div>
