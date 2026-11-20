@@ -8,6 +8,7 @@ import UsersView from './components/UsersView';
 import CreditsView from './components/CreditsView';
 import QuotesView from './components/QuotesView';
 import DashboardView from './components/DashboardView';
+import SalesView from './components/SalesView';
 import { generateQuotePdf } from './utils/quotePdfGenerator';
 import {
   Plus,
@@ -227,9 +228,10 @@ export default function App() {
     try {
       const res = await fetch(`${API_BASE}/sales`);
       const data = await res.json();
-      setSalesList(data);
+      setSalesList(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Error fetching sales:', err);
+      setSalesList([]);
     }
   };
 
@@ -931,103 +933,18 @@ export default function App() {
       {/* VISTA 4: HISTORIAL DE VENTAS                              */}
       {/* ========================================================= */}
       {activeTab === 'sales' && (
-        <div className="flex flex-col gap-6 max-w-[1720px] mx-auto pb-10">
-          {/* Header Card — Estilo Deep Teal Ferretería Hebert */}
-          <div className="card-surface p-5 sm:p-6 flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="w-11 h-11 rounded-2xl bg-[#F2F7F6] text-[#074E4A] flex items-center justify-center shrink-0">
-                <Receipt className="w-5 h-5" />
-              </div>
-              <div>
-                <h2 className="font-display font-bold text-[19px] text-[#111827]">
-                  Historial de Facturación
-                </h2>
-                <p className="text-xs sm:text-[13px] text-slate-400 mt-0.5">
-                  Registro de operaciones con reimpresión de comprobante 58mm
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={fetchSales}
-              className="px-4 py-2.5 rounded-xl bg-[#F4F6F8] hover:bg-slate-200/80 text-slate-700 text-xs font-semibold flex items-center gap-2 transition-colors cursor-pointer"
-            >
-              <RefreshCw className="w-3.5 h-3.5 text-[#074E4A]" />
-              <span>Actualizar</span>
-            </button>
-          </div>
-
-          {/* Table Card — Idéntica a Screenshot 3 */}
-          <div className="card-surface overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-slate-100 bg-[#FAFBFC] text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                    <th className="py-3.5 pl-6 pr-3">Ticket #</th>
-                    <th className="py-3.5 px-3">Fecha</th>
-                    <th className="py-3.5 px-3">Cliente</th>
-                    <th className="py-3.5 px-3">Forma de Pago</th>
-                    <th className="py-3.5 px-3 text-right">USD Tienda</th>
-                    <th className="py-3.5 px-3 text-right">Total Bolívares</th>
-                    <th className="py-3.5 px-3 text-right">USD BCV</th>
-                    <th className="py-3.5 pl-3 pr-6 text-center">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 text-[13px]">
-                  {salesList.length === 0 ? (
-                    <tr>
-                      <td colSpan="8" className="py-16 text-center text-slate-400">
-                        <Receipt className="w-10 h-10 mx-auto text-slate-300 mb-2" />
-                        <p className="font-display font-semibold text-[#111827] mb-1">No hay ventas registradas aún</p>
-                        <p className="text-xs text-slate-400">Las operaciones facturadas en el Punto de Venta aparecerán aquí.</p>
-                      </td>
-                    </tr>
-                  ) : (
-                    salesList.map(sale => (
-                      <tr key={sale.id} className="hover:bg-[#F7FAF9] transition-colors">
-                        <td className="py-4 pl-6 pr-3 font-mono-num font-bold text-[#074E4A] whitespace-nowrap">
-                          {sale.sale_number}
-                        </td>
-                        <td className="py-4 px-3 text-slate-500 text-xs font-mono-num whitespace-nowrap">
-                          {new Date(sale.created_at).toLocaleString('es-VE', { dateStyle: 'short', timeStyle: 'short' })}
-                        </td>
-                        <td className="py-4 px-3 font-semibold text-[#111827]">
-                          {sale.customer_name}
-                        </td>
-                        <td className="py-4 px-3">
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-[#F4F6F8] text-slate-700">
-                            {sale.notes || sale.payment_method}
-                          </span>
-                        </td>
-                        <td className="py-4 px-3 text-right font-mono-num font-bold text-[#111827] whitespace-nowrap">
-                          ${sale.total_usd_tienda.toFixed(2)}
-                        </td>
-                        <td className="py-4 px-3 text-right font-mono-num font-semibold text-[#074E4A] whitespace-nowrap">
-                          Bs. {sale.total_bs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </td>
-                        <td className="py-4 px-3 text-right font-mono-num font-semibold text-indigo-600 whitespace-nowrap">
-                          ${sale.total_usd_bcv.toFixed(2)}
-                        </td>
-                        <td className="py-4 pl-3 pr-6 text-center whitespace-nowrap">
-                          <button
-                            onClick={async () => {
-                              const res = await fetch(`${API_BASE}/sales/${sale.id}`);
-                              const data = await res.json();
-                              setPrintedSale(data);
-                            }}
-                            className="px-3 py-1.5 bg-[#074E4A] hover:bg-[#053E3B] text-white rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
-                          >
-                            <Printer className="w-3.5 h-3.5" />
-                            <span>58mm</span>
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
+        <SalesView
+          salesList={salesList}
+          fetchSales={fetchSales}
+          settings={settings}
+          onInspectSale={(sale) => {
+            fetch(`${API_BASE}/sales/${sale.id}`)
+              .then(res => res.json())
+              .then(data => setPrintedSale(data))
+              .catch(err => console.error(err));
+          }}
+          showToast={showToast}
+        />
       )}
 
       {/* ========================================================= */}
