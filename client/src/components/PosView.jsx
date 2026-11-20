@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   LayoutGrid,
   List,
@@ -12,9 +12,14 @@ import {
   Sparkles,
   X,
   UserPlus,
+  User,
+  Search,
+  ChevronDown,
+  Check,
   ArrowRight,
   CreditCard
 } from 'lucide-react';
+import QuickClientModal from './QuickClientModal';
 
 export default function PosView({
   products,
@@ -29,6 +34,12 @@ export default function PosView({
   cart,
   customerName,
   setCustomerName,
+  customerCi = '',
+  setCustomerCi = () => {},
+  customerPhone = '',
+  setCustomerPhone = () => {},
+  selectedCustomerId = null,
+  setSelectedCustomerId = () => {},
   customers = [],
   cartTotals,
   onProductClick,
@@ -41,38 +52,82 @@ export default function PosView({
   showToast
 }) {
   const [isCartDrawerOpen, setIsCartDrawerOpen] = useState(false);
-  const [isNewCustomerModalOpen, setIsNewCustomerModalOpen] = useState(false);
-  const [newCustomerForm, setNewCustomerForm] = useState({ name: '', id_card: '', phone: '' });
-  const [isCreatingCustomer, setIsCreatingCustomer] = useState(false);
+  const [isQuickClientOpen, setIsQuickClientOpen] = useState(false);
+  const [quickClientDraft, setQuickClientDraft] = useState('');
+  const [clientPickerOpen, setClientPickerOpen] = useState(false);
+  const [clientSearchQuery, setClientSearchQuery] = useState('');
 
-  const handleCreateCustomer = async (e) => {
-    e.preventDefault();
-    if (!newCustomerForm.name.trim() || !newCustomerForm.id_card.trim()) {
-      if (showToast) showToast('Nombre y Cédula/RIF son obligatorios', 'error');
-      return;
+  const clientPickerRef = useRef(null);
+  const clientSearchInputRef = useRef(null);
+
+  // Active client object
+  const selectedClient = useMemo(() => {
+    if (selectedCustomerId) {
+      const found = customers.find(c => c.id === selectedCustomerId);
+      if (found) return found;
     }
-    setIsCreatingCustomer(true);
-    try {
-      const res = await fetch('/api/customers', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newCustomerForm)
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Error al guardar cliente');
-      }
-      if (fetchCustomers) await fetchCustomers();
-      setCustomerName(newCustomerForm.name);
-      setIsNewCustomerModalOpen(false);
-      setNewCustomerForm({ name: '', id_card: '', phone: '' });
-      if (showToast) showToast(`Cliente ${newCustomerForm.name} registrado con éxito`);
-    } catch (err) {
-      if (showToast) showToast(err.message, 'error');
-    } finally {
-      setIsCreatingCustomer(false);
+    if (customerName && customerName !== 'Cliente Mostrador') {
+      const found = customers.find(c => c.name.toLowerCase() === customerName.toLowerCase() || `${c.name} (${c.id_card})` === customerName);
+      if (found) return found;
     }
+    return {
+      id: 1,
+      name: customerName || 'Cliente Mostrador',
+      id_card: customerCi || 'V-00000000',
+      phone: customerPhone || '0414-0000000'
+    };
+  }, [customers, selectedCustomerId, customerName, customerCi, customerPhone]);
+
+  // Matching clients for search dropdown
+  const matchingClients = useMemo(() => {
+    const q = clientSearchQuery.trim().toLowerCase();
+    if (!q) return customers;
+    return customers.filter(c =>
+      (c.name && c.name.toLowerCase().includes(q)) ||
+      (c.id_card && c.id_card.toLowerCase().includes(q)) ||
+      (c.phone && c.phone.includes(q))
+    );
+  }, [customers, clientSearchQuery]);
+
+  const handleSelectClient = (client) => {
+    if (!client) return;
+    setSelectedCustomerId(client.id);
+    setCustomerName(client.name);
+    setCustomerCi(client.id_card || '');
+    setCustomerPhone(client.phone || '');
+    setClientPickerOpen(false);
+    setClientSearchQuery('');
   };
+
+  const handleClientCreated = (newClient) => {
+    handleSelectClient(newClient);
+  };
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    if (!clientPickerOpen) return;
+    const handleClickOutside = (e) => {
+      if (clientPickerRef.current && !clientPickerRef.current.contains(e.target)) {
+        setClientPickerOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [clientPickerOpen]);
+
+  // Keyboard shortcut F3 to trigger quick client modal
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (e.key === 'F3') {
+        e.preventDefault();
+        setClientPickerOpen(false);
+        setQuickClientDraft(clientSearchQuery);
+        setIsQuickClientOpen(true);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [clientSearchQuery]);
 
   const getProductImage = (prod) => {
     if (prod.image_url && prod.image_url.trim()) return prod.image_url;
@@ -368,13 +423,18 @@ export default function PosView({
         {/* CART CONTAINER (DESKTOP ONLY - COMPACTO Y PROPORCIONADO)  */}
         {/* ========================================================= */}
         <div className="hidden lg:block lg:col-span-4 xl:col-span-4 2xl:col-span-3 bg-white rounded-2xl border border-gray-100 shadow-xs p-3.5 sm:p-4 space-y-3 sticky top-18">
-          {/* Header */}
+          {/* Header matching Screenshot 1 */}
           <div className="flex items-center justify-between pb-2.5 border-b border-gray-100">
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-lg bg-emerald-50 text-[#074E4A] flex items-center justify-center font-bold">
-                <ShoppingCart className="w-3.5 h-3.5" />
+              <div className="w-8 h-8 rounded-xl bg-emerald-50 text-[#074E4A] flex items-center justify-center font-bold shrink-0">
+                <ShoppingCart className="w-4 h-4" />
               </div>
-              <h3 className="font-bold text-xs sm:text-sm text-gray-900">Orden de Venta</h3>
+              <div className="min-w-0">
+                <h3 className="font-display font-bold text-sm text-[#111827] leading-tight">Orden de Venta</h3>
+                <p className="text-[11px] text-slate-400 font-medium">
+                  {isCasheaActive ? `Modalidad Cashea (+${casheaPercent}%)` : 'Precio estándar tienda'}
+                </p>
+              </div>
             </div>
             <div className="flex items-center gap-1.5">
               {isCasheaActive && (
@@ -382,39 +442,141 @@ export default function PosView({
                   CASHEA
                 </span>
               )}
-              <span className="text-[10px] bg-gray-100 text-gray-700 font-semibold px-2 py-0.5 rounded-full">
+              <span className="text-xs bg-[#F4F6F8] text-[#111827] font-mono-num font-semibold px-2.5 py-1 rounded-xl">
                 {cart.length} {cart.length === 1 ? 'ítem' : 'ítems'}
               </span>
             </div>
           </div>
 
-          {/* Customer Input with Autocomplete */}
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
-                Cliente (Nombre / Cédula)
-              </label>
-              {customers.length > 0 && (
-                <span className="text-[10px] text-gray-400 font-medium">
-                  {customers.length} registrados
+          {/* Smart Client Selector matching Screenshot 1 & 3 */}
+          <div ref={clientPickerRef} className="relative">
+            <div className="bg-[#F6F8FA] rounded-xl p-3 border border-transparent focus-within:border-[#074E4A]/30 transition-colors">
+              <div className="flex items-center justify-between gap-2 mb-1.5">
+                <span className="text-[11px] font-medium text-slate-400">
+                  Cliente (Nombre / Cédula) · [F3]
                 </span>
-              )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setClientPickerOpen(false);
+                    setQuickClientDraft(clientSearchQuery);
+                    setIsQuickClientOpen(true);
+                  }}
+                  className="px-2.5 py-1 rounded-lg bg-[#E6F7F5] hover:bg-[#074E4A] text-[#074E4A] hover:text-white text-[11px] font-semibold inline-flex items-center gap-1 transition-colors whitespace-nowrap cursor-pointer shadow-2xs"
+                >
+                  <UserPlus className="w-3 h-3" />
+                  <span>+ Nuevo</span>
+                </button>
+              </div>
+
+              <button
+                type="button"
+                aria-expanded={clientPickerOpen}
+                onClick={() => setClientPickerOpen((prev) => !prev)}
+                className="w-full flex items-center justify-between gap-2 text-left group cursor-pointer"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-7 h-7 rounded-lg bg-white text-[#074E4A] flex items-center justify-center shrink-0 border border-slate-200/60 shadow-2xs">
+                    <User className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[13px] font-semibold text-[#111827] truncate">
+                      {selectedClient?.name || 'Cliente Mostrador'}
+                    </p>
+                    <p className="text-[11px] font-mono-num text-slate-400 truncate">
+                      {selectedClient?.id_card || 'V-00000000'}
+                      {selectedClient?.phone ? ` · ${selectedClient.phone}` : ''}
+                    </p>
+                  </div>
+                </div>
+                <ChevronDown
+                  className={`w-4 h-4 text-slate-400 shrink-0 transition-transform ${
+                    clientPickerOpen ? 'rotate-180 text-[#074E4A]' : ''
+                  }`}
+                />
+              </button>
             </div>
-            <div className="relative">
-              <input
-                type="text"
-                list="customers-datalist"
-                value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
-                placeholder="Cliente Mostrador o buscar..."
-                className="w-full px-2.5 py-1.5 bg-gray-50 border border-gray-200/80 rounded-xl text-xs font-medium text-gray-900 placeholder:text-gray-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#074E4A]/20 focus:border-[#074E4A]"
-              />
-              <datalist id="customers-datalist">
-                {customers.map(c => (
-                  <option key={c.id} value={`${c.name} (${c.id_card})`} />
-                ))}
-              </datalist>
-            </div>
+
+            {/* Client Search & Dropdown Popover */}
+            {clientPickerOpen && (
+              <div className="absolute left-0 right-0 mt-1.5 bg-white rounded-2xl shadow-xl border border-slate-100 z-40 overflow-hidden animate-in fade-in duration-100">
+                <div className="p-2.5 border-b border-slate-100">
+                  <div className="relative">
+                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <input
+                      ref={clientSearchInputRef}
+                      type="search"
+                      value={clientSearchQuery}
+                      onChange={(e) => setClientSearchQuery(e.target.value)}
+                      placeholder="Buscar cédula, nombre o teléfono..."
+                      className="w-full bg-[#F6F8FA] focus:bg-white rounded-xl pl-8 pr-3 py-2 text-xs text-[#111827] placeholder:text-slate-400 border border-transparent focus:border-[#074E4A]/30 focus:outline-none transition-colors"
+                      autoFocus
+                    />
+                  </div>
+                </div>
+
+                <div className="max-h-52 overflow-y-auto divide-y divide-slate-50">
+                  {matchingClients.length === 0 ? (
+                    <div className="px-3.5 py-4 text-center">
+                      <p className="text-xs font-medium text-slate-500">
+                        No existe ningún cliente con &ldquo;{clientSearchQuery}&rdquo;
+                      </p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        Regístralo al instante sin salir de caja
+                      </p>
+                    </div>
+                  ) : (
+                    matchingClients.map((c) => {
+                      const isSelected = selectedClient?.id === c.id;
+                      return (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => handleSelectClient(c)}
+                          className={`w-full px-3.5 py-2.5 flex items-center justify-between gap-2 text-left transition-colors cursor-pointer ${
+                            isSelected ? 'bg-[#F2F7F6]' : 'hover:bg-[#FAFBFC]'
+                          }`}
+                        >
+                          <div className="min-w-0">
+                            <p className="text-xs font-semibold text-[#111827] truncate">
+                              {c.name}
+                            </p>
+                            <p className="text-[11px] font-mono-num text-slate-400 truncate">
+                              {c.id_card}
+                              {c.phone ? ` · ${c.phone}` : ''}
+                            </p>
+                          </div>
+                          {isSelected && (
+                            <Check className="w-4 h-4 text-[#074E4A] shrink-0" />
+                          )}
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+
+                <div className="p-2 bg-[#FAFBFC] border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const typed = clientSearchQuery;
+                      setClientPickerOpen(false);
+                      setClientSearchQuery('');
+                      setQuickClientDraft(typed);
+                      setIsQuickClientOpen(true);
+                    }}
+                    className="w-full py-2 px-3 rounded-xl bg-[#074E4A] hover:bg-[#053E3B] text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                  >
+                    <UserPlus className="w-3.5 h-3.5" />
+                    <span className="truncate">
+                      {clientSearchQuery.trim()
+                        ? `Registrar "${clientSearchQuery.trim()}" ahora`
+                        : 'Registrar nuevo cliente'}
+                    </span>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Items List */}
@@ -650,26 +812,40 @@ export default function PosView({
             <div className="px-4 sm:px-5 py-3 border-b border-gray-100 bg-gray-50/60">
               <div className="flex items-center justify-between mb-1.5">
                 <span className="text-[10px] font-black uppercase tracking-wider text-gray-500">
-                  CLIENTE / TALLER:
+                  CLIENTE (NOMBRE / CÉDULA) · [F3]
                 </span>
                 <button
                   type="button"
-                  onClick={() => setIsNewCustomerModalOpen(true)}
-                  className="text-xs font-bold text-[#074E4A] hover:text-[#053E3B] flex items-center gap-1 cursor-pointer"
+                  onClick={() => {
+                    setQuickClientDraft('');
+                    setIsQuickClientOpen(true);
+                  }}
+                  className="px-2.5 py-1 rounded-lg bg-[#E6F7F5] hover:bg-[#074E4A] text-[#074E4A] hover:text-white text-[11px] font-semibold inline-flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
                 >
                   <UserPlus className="w-3.5 h-3.5" />
                   <span>+ Nuevo</span>
                 </button>
               </div>
               <select
-                value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
+                value={selectedCustomerId || selectedClient?.id || ''}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  const found = customers.find(c => String(c.id) === val);
+                  if (found) {
+                    handleSelectClient(found);
+                  } else {
+                    setSelectedCustomerId(null);
+                    setCustomerName('Cliente Mostrador');
+                    setCustomerCi('V-00000000');
+                    setCustomerPhone('0414-0000000');
+                  }
+                }}
                 className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#074E4A]/20 focus:border-[#074E4A] cursor-pointer shadow-2xs"
               >
-                <option value="Cliente Mostrador">Cliente Mostrador (Venta Rápida)</option>
+                <option value="">Cliente Mostrador (V-00000000 · 0414-0000000)</option>
                 {customers.map(c => (
-                  <option key={c.id} value={c.name}>
-                    {c.name} {c.id_card ? `(${c.id_card})` : ''}
+                  <option key={c.id} value={c.id}>
+                    {c.name} ({c.id_card || 'S/C'}) {c.phone ? `· ${c.phone}` : ''}
                   </option>
                 ))}
               </select>
@@ -770,91 +946,21 @@ export default function PosView({
       )}
 
       {/* ========================================================= */}
-      {/* QUICK NEW CUSTOMER MODAL                                   */}
+      {/* QUICK CLIENT MODAL IDENTICAL TO SCREENSHOT 3               */}
       {/* ========================================================= */}
-      {isNewCustomerModalOpen && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4">
-          <div
-            className="fixed inset-0 bg-black/60 backdrop-blur-xs"
-            onClick={() => setIsNewCustomerModalOpen(false)}
-          />
-          <div className="relative bg-white w-full max-w-sm rounded-2xl shadow-2xl z-10 p-4 sm:p-5 border border-gray-100">
-            <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-3">
-              <h3 className="font-bold text-sm text-gray-900 flex items-center gap-2">
-                <UserPlus className="w-4 h-4 text-[#074E4A]" />
-                <span>Nuevo Cliente / Taller</span>
-              </h3>
-              <button
-                type="button"
-                onClick={() => setIsNewCustomerModalOpen(false)}
-                className="w-7 h-7 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 cursor-pointer"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateCustomer} className="space-y-3">
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-1">
-                  Nombre o Razón Social *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={newCustomerForm.name}
-                  onChange={(e) => setNewCustomerForm({ ...newCustomerForm, name: e.target.value })}
-                  placeholder="Ej: Inversiones Los Andes / Taller Juan"
-                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#074E4A]/20 focus:border-[#074E4A]"
-                />
-              </div>
-
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-1">
-                  Cédula o RIF *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={newCustomerForm.id_card}
-                  onChange={(e) => setNewCustomerForm({ ...newCustomerForm, id_card: e.target.value })}
-                  placeholder="Ej: V-12345678 o J-123456789"
-                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#074E4A]/20 focus:border-[#074E4A]"
-                />
-              </div>
-
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-1">
-                  Teléfono / WhatsApp
-                </label>
-                <input
-                  type="text"
-                  value={newCustomerForm.phone}
-                  onChange={(e) => setNewCustomerForm({ ...newCustomerForm, phone: e.target.value })}
-                  placeholder="Ej: 0414-1234567"
-                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#074E4A]/20 focus:border-[#074E4A]"
-                />
-              </div>
-
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsNewCustomerModalOpen(false)}
-                  className="flex-1 py-2 rounded-xl border border-gray-200 text-gray-600 text-xs font-semibold hover:bg-gray-50 cursor-pointer"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={isCreatingCustomer}
-                  className="flex-1 py-2 rounded-xl bg-[#074E4A] hover:bg-[#053E3B] text-white text-xs font-bold transition-all shadow-xs cursor-pointer disabled:opacity-50"
-                >
-                  {isCreatingCustomer ? 'Guardando...' : 'Guardar Cliente'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <QuickClientModal
+        isOpen={isQuickClientOpen}
+        initialQuery={quickClientDraft}
+        existingClients={customers}
+        onClose={() => {
+          setIsQuickClientOpen(false);
+          setQuickClientDraft('');
+        }}
+        onClientCreated={handleClientCreated}
+        onSelectExisting={handleSelectClient}
+        showToast={showToast}
+        fetchCustomers={fetchCustomers}
+      />
     </div>
   );
 }

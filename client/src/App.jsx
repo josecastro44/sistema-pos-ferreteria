@@ -173,6 +173,9 @@ export default function App() {
         e.preventDefault();
         setActiveTab('pos');
         setTimeout(() => searchInputRef.current?.focus(), 50);
+      } else if (e.key === 'F3') {
+        e.preventDefault();
+        setActiveTab('pos');
       } else if (e.key === 'F4') {
         e.preventDefault();
         if (activeTab === 'pos' && cart.length > 0) {
@@ -709,6 +712,12 @@ export default function App() {
           cart={cart}
           customerName={customerName}
           setCustomerName={setCustomerName}
+          customerCi={customerCi}
+          setCustomerCi={setCustomerCi}
+          customerPhone={customerPhone}
+          setCustomerPhone={setCustomerPhone}
+          selectedCustomerId={selectedCustomerId}
+          setSelectedCustomerId={setSelectedCustomerId}
           customers={customers}
           cartTotals={cartTotals}
           onProductClick={handleProductClick}
