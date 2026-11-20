@@ -36,7 +36,7 @@ const API_BASE = '/api';
 export default function App() {
   // Navigation & UI State
   const [activeTab, setActiveTab] = useState('pos'); // 'pos', 'dashboard', 'customers', 'inventory', 'edit-product', 'sales', 'finances', 'users', 'settings'
-  const [posViewMode, setPosViewMode] = useState('grid'); // 'grid' (Cuadrícula) or 'list' (Lista)
+  const [posViewMode, setPosViewMode] = useState('list'); // 'list' (Lista) by default, or 'grid' (Cuadrícula)
 
   // Customers State
   const [customers, setCustomers] = useState([]);

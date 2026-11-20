@@ -20,6 +20,7 @@ import {
   CreditCard
 } from 'lucide-react';
 import QuickClientModal from './QuickClientModal';
+import ProductThumbnail from './ProductThumbnail';
 
 export default function PosView({
   products,
@@ -138,285 +139,364 @@ export default function PosView({
   const activeProducts = products.filter(p => p.is_active !== 0);
 
   return (
-    <div className="space-y-3.5 w-full max-w-[1720px] mx-auto">
+    <div className="space-y-4 w-full max-w-[1720px] mx-auto">
       {/* ========================================================= */}
-      {/* TITLE & TOP ACTIONS                                       */}
+      {/* TITLE & SUBTITLE OUTSIDE CARD (SCREENSHOT 7 & MODEL)       */}
       {/* ========================================================= */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-xl font-bold text-gray-900 tracking-tight">Punto de Venta</h2>
-            {isCasheaActive && (
-              <span className="px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800 text-[11px] font-black tracking-wide border border-purple-200 animate-pulse">
-                🟣 Modo Cashea Activo (+{casheaPercent}%)
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-2 text-xs text-gray-400 font-medium">
-            <Box className="w-3.5 h-3.5" />
-            <span>{activeProducts.length} productos</span>
-            <span>•</span>
-            <span className="text-[#074E4A] font-semibold">[F2] para buscar</span>
-          </div>
+          <h1 className="font-display font-bold text-xl text-[#111827] tracking-tight">
+            Punto de Venta
+          </h1>
+          <p className="text-xs text-slate-400 mt-0.5">
+            Facturación rápida en Divisas, Bolívares, BCV y Cashea
+          </p>
         </div>
-
-        {/* Action Controls & View Switcher */}
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Modalidad Cashea Toggle (Precio 1 vs Precio 2) */}
-          <div className="flex items-center bg-gray-100/90 p-0.5 rounded-xl border border-gray-200/60 text-xs">
-            <button
-              type="button"
-              onClick={() => setIsCasheaActive(false)}
-              className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer ${
-                !isCasheaActive
-                  ? 'bg-white text-gray-900 shadow-xs'
-                  : 'text-gray-500 hover:text-gray-900'
-              }`}
-            >
-              Precio Estándar
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsCasheaActive(true)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
-                isCasheaActive
-                  ? 'bg-purple-600 text-white shadow-xs'
-                  : 'text-purple-700 hover:bg-purple-50'
-              }`}
-            >
-              <span>🟣 Cashea</span>
-              <span className="text-[10px] opacity-80">(+{casheaPercent}%)</span>
-            </button>
-          </div>
-
-          {/* Segmented Switcher (Cuadrícula / Lista) */}
-          <div className="flex items-center bg-gray-100/90 p-0.5 rounded-xl border border-gray-200/60">
-            <button
-              onClick={() => setPosViewMode('grid')}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                posViewMode === 'grid'
-                  ? 'bg-white text-gray-900 shadow-xs'
-                  : 'text-gray-500 hover:text-gray-900'
-              }`}
-            >
-              <LayoutGrid className="w-3.5 h-3.5 text-[#074E4A]" />
-              <span className="hidden sm:inline">Cuadrícula</span>
-            </button>
-            <button
-              onClick={() => setPosViewMode('list')}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                posViewMode === 'list'
-                  ? 'bg-white text-gray-900 shadow-xs'
-                  : 'text-gray-500 hover:text-gray-900'
-              }`}
-            >
-              <List className="w-3.5 h-3.5 text-[#074E4A]" />
-              <span className="hidden sm:inline">Lista</span>
-            </button>
-          </div>
-
-          {/* Quick Pay Button */}
-          {cart.length > 0 && (
-            <button
-              onClick={onOpenCheckout}
-              className="bg-[#074E4A] hover:bg-[#053E3B] text-white font-semibold px-3.5 py-1.5 rounded-xl text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
-            >
-              <DollarSign className="w-3.5 h-3.5" />
-              <span>Cobrar (${cartTotals.total_usd_tienda.toFixed(2)})</span>
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* ========================================================= */}
-      {/* FILTER PILLS ROW                                          */}
-      {/* ========================================================= */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
-        {categories.map(cat => (
-          <button
-            key={cat}
-            onClick={() => setSelectedCategory(cat)}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
-              selectedCategory === cat
-                ? 'bg-[#074E4A] text-white shadow-xs'
-                : 'bg-white text-slate-600 hover:text-[#111827] border border-slate-100 hover:border-slate-200'
-            }`}
-          >
-            {cat}
-          </button>
-        ))}
       </div>
 
       {/* ========================================================= */}
       {/* MAIN LAYOUT: CATALOG (LEFT 8-9 COLS) + CART (RIGHT 3-4)   */}
       {/* ========================================================= */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-start">
-        {/* CATALOG CONTAINER */}
-        <div className="lg:col-span-8 xl:col-span-8 2xl:col-span-9 bg-white rounded-2xl border border-gray-100 shadow-xs p-3.5 sm:p-4">
-          {activeProducts.length === 0 ? (
-            <div className="py-16 text-center text-gray-400">
-              <Box className="w-10 h-10 mx-auto stroke-1 text-gray-300 mb-2" />
-              <p className="text-sm font-semibold text-gray-600">No se encontraron productos disponibles</p>
-              <p className="text-xs text-gray-400">Prueba con otro término de búsqueda o categoría</p>
-            </div>
-          ) : posViewMode === 'grid' ? (
-            /* =================================================== */
-            /* VISTA CUADRÍCULA COMPACTA Y EFICIENTE (4-5 COLS)    */
-            /* =================================================== */
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2.5 sm:gap-3">
-              {activeProducts.map(prod => {
-                const displayPriceUsd = isCasheaActive ? prod.price_cashea : prod.price_usd_tienda;
-                const displayPriceBs = isCasheaActive ? prod.price_cashea_bs : prod.price_bs;
-                const tasaBcvVal = Number(settings?.tasa_bcv || 883.40);
-                const displayPriceUsdBcv = prod.price_usd_bcv ? Number(prod.price_usd_bcv) : (displayPriceBs / tasaBcvVal);
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+        {/* CATALOG CONTAINER CARD */}
+        <div className="lg:col-span-8 xl:col-span-8 2xl:col-span-8 flex flex-col gap-4 min-w-0">
+          <div className="card-surface p-5 flex flex-col gap-4">
+            {/* Catalog Card Header matching Screenshot 7 & 8 */}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="font-display font-bold text-[17px] text-[#111827]">
+                    Catálogo de Productos
+                  </h2>
+                  <span className="text-xs font-mono-num font-semibold px-2.5 py-0.5 rounded-lg bg-[#F2F7F6] text-[#074E4A]">
+                    {activeProducts.length} productos
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Haz clic en un artículo para agregarlo · [F2] para buscar
+                </p>
+              </div>
 
-                return (
-                  <div
-                    key={prod.id}
-                    onClick={() => onProductClick(prod)}
-                    className={`bg-white rounded-xl border transition-all cursor-pointer flex flex-col justify-between p-2.5 sm:p-3 group relative ${
-                      isCasheaActive
-                        ? 'border-purple-200 hover:border-purple-500 hover:shadow-purple-100 shadow-xs'
-                        : 'border-gray-100 hover:border-[#074E4A]/40 hover:shadow-sm'
+              <div className="flex flex-wrap items-center gap-2.5">
+                {/* Price Mode Toggle: Estándar vs Cashea (+15%) */}
+                <div
+                  className="flex items-center bg-[#F4F6F8] p-1 rounded-xl"
+                  role="group"
+                  aria-label="Modalidad de precio"
+                >
+                  <button
+                    type="button"
+                    onClick={() => setIsCasheaActive(false)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap cursor-pointer ${
+                      !isCasheaActive
+                        ? 'bg-white text-[#111827] shadow-xs'
+                        : 'text-slate-500 hover:text-[#111827]'
                     }`}
                   >
-                    <div>
-                      {/* Thumbnail Image Box */}
-                      <div className="w-full h-24 sm:h-28 rounded-lg overflow-hidden bg-gray-50 relative flex items-center justify-center border border-gray-100/60 mb-2">
-                        <img
-                          src={getProductImage(prod)}
-                          alt={prod.name}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          onError={(e) => {
-                            e.target.src = 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=300&auto=format&fit=crop&q=80';
-                          }}
-                        />
-                        {/* Floating Stock Tag */}
-                        <span
-                          className={`absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded-md text-[9px] font-semibold backdrop-blur-xs shadow-xs ${
-                            prod.stock <= prod.min_stock
-                              ? 'bg-rose-50/90 text-rose-700 border border-rose-200'
-                              : 'bg-white/90 text-gray-700 border border-gray-200/60'
-                          }`}
-                        >
-                          {prod.stock} {prod.unit}
-                        </span>
+                    Precio Estándar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsCasheaActive(true)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
+                      isCasheaActive
+                        ? 'bg-[#074E4A] text-white shadow-xs'
+                        : 'text-slate-500 hover:text-[#111827]'
+                    }`}
+                  >
+                    <span>Cashea (+{casheaPercent}%)</span>
+                  </button>
+                </div>
 
-                        {isCasheaActive && (
-                          <span className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded-md text-[8px] font-black bg-purple-700 text-white shadow-xs">
-                            CASHEA
-                          </span>
-                        )}
-                      </div>
+                {/* Layout Mode Toggle: Cuadrícula vs Lista */}
+                <div
+                  className="flex items-center bg-[#F4F6F8] p-1 rounded-xl"
+                  role="group"
+                  aria-label="Vista de catálogo"
+                >
+                  <button
+                    type="button"
+                    onClick={() => setPosViewMode('grid')}
+                    className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                      posViewMode === 'grid'
+                        ? 'bg-white text-[#111827] shadow-xs'
+                        : 'text-slate-500 hover:text-[#111827]'
+                    }`}
+                  >
+                    <LayoutGrid className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Cuadrícula</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPosViewMode('list')}
+                    className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                      posViewMode === 'list'
+                        ? 'bg-white text-[#111827] shadow-xs'
+                        : 'text-slate-500 hover:text-[#111827]'
+                    }`}
+                  >
+                    <List className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Lista</span>
+                  </button>
+                </div>
+              </div>
+            </div>
 
-                      {/* Category & Name */}
-                      <div className="text-[9px] font-bold uppercase tracking-wider text-gray-400">
-                        {prod.category}
-                      </div>
-                      <h4
-                        className="font-bold text-xs text-gray-900 group-hover:text-[#074E4A] transition-colors line-clamp-2 leading-snug mt-0.5"
-                        title={prod.name}
-                      >
-                        {prod.name}
-                      </h4>
-                    </div>
-
-                    {/* Pricing: Tienda $, Bs. y USD BCV $ */}
-                    <div className="pt-2 border-t border-gray-100 mt-2 space-y-1">
-                      <div className="flex items-baseline justify-between">
-                        <span className={`text-base font-extrabold font-mono tracking-tight leading-none ${isCasheaActive ? 'text-purple-700' : 'text-gray-900'}`}>
-                          ${Number(displayPriceUsd).toFixed(2)}
-                        </span>
-                        <span className="text-[11px] font-bold text-gray-500 font-mono">
-                          Bs. {Number(displayPriceBs).toLocaleString('es-VE', { minimumFractionDigits: 2 })}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between text-[10px] font-mono text-indigo-600 bg-indigo-50/70 px-1.5 py-0.5 rounded">
-                        <span className="font-medium text-gray-500">USD BCV:</span>
-                        <span className="font-bold">${displayPriceUsdBcv.toFixed(2)}</span>
-                      </div>
-                    </div>
-                  </div>
+            {/* Category Filter Strip matching Screenshot 7 */}
+            <div
+              className="flex flex-wrap items-center gap-2"
+              role="tablist"
+              aria-label="Categorías de productos"
+            >
+              {categories.map((category) => {
+                const active = selectedCategory === category;
+                return (
+                  <button
+                    key={category}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => setSelectedCategory(category)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
+                      active
+                        ? 'bg-[#074E4A] text-white shadow-xs'
+                        : 'bg-white text-slate-600 hover:text-[#111827] border border-slate-100 hover:border-slate-200'
+                    }`}
+                  >
+                    {category}
+                  </button>
                 );
               })}
             </div>
-          ) : (
-            /* =================================================== */
-            /* VISTA EN LISTA COMPACTA                            */
-            /* =================================================== */
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-gray-100 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
-                    <th className="pb-2.5 pl-2">Foto</th>
-                    <th className="pb-2.5">Código</th>
-                    <th className="pb-2.5">Producto</th>
-                    <th className="pb-2.5">Stock</th>
-                    <th className="pb-2.5 text-right">Precio USD ($)</th>
-                    <th className="pb-2.5 text-right">Precio Bs.</th>
-                    <th className="pb-2.5 text-right text-indigo-700 font-bold">USD BCV ($)</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {activeProducts.map(prod => {
-                    const displayPriceUsd = isCasheaActive ? prod.price_cashea : prod.price_usd_tienda;
-                    const displayPriceBs = isCasheaActive ? prod.price_cashea_bs : prod.price_bs;
-                    const tasaBcvVal = Number(settings?.tasa_bcv || 883.40);
-                    const displayPriceUsdBcv = prod.price_usd_bcv ? Number(prod.price_usd_bcv) : (displayPriceBs / tasaBcvVal);
 
-                    return (
-                      <tr
-                        key={prod.id}
-                        onClick={() => onProductClick(prod)}
-                        className="hover:bg-gray-50/80 transition-colors cursor-pointer group"
-                      >
-                        <td className="py-2 pl-2">
-                          <div className="w-8 h-8 rounded-lg overflow-hidden bg-gray-50 border border-gray-100 shrink-0">
-                            <img
-                              src={getProductImage(prod)}
-                              alt={prod.name}
-                              className="w-full h-full object-cover"
-                              onError={(e) => {
-                                e.target.src = 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=300&auto=format&fit=crop&q=80';
-                              }}
-                            />
-                          </div>
-                        </td>
-                        <td className="py-2 font-mono text-[11px] font-medium text-gray-500">{prod.code}</td>
-                        <td className="py-2">
-                          <div className="font-bold text-xs text-gray-900 group-hover:text-[#074E4A] transition-colors">
-                            {prod.name}
-                          </div>
-                          <div className="text-[10px] text-gray-400">{prod.category} • [{prod.unit}]</div>
-                        </td>
-                        <td className="py-2 font-medium">
-                          <span
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                              prod.stock <= prod.min_stock
-                                ? 'bg-rose-50 text-rose-700'
-                                : 'bg-gray-100 text-gray-700'
-                            }`}
-                          >
-                            {prod.stock} {prod.unit}
-                          </span>
-                        </td>
-                        <td className="py-2 text-right font-mono font-bold text-gray-900 text-xs">
-                          ${displayPriceUsd.toFixed(2)}
-                          {isCasheaActive && <span className="ml-1 text-[9px] text-purple-700 font-bold">Cashea</span>}
-                        </td>
-                        <td className="py-2 text-right font-mono font-bold text-[#074E4A] text-xs">
-                          Bs. {displayPriceBs.toLocaleString('es-VE')}
-                        </td>
-                        <td className="py-2 text-right font-mono font-bold text-indigo-700 text-xs bg-indigo-50/40">
-                          ${displayPriceUsdBcv.toFixed(2)}
-                        </td>
+            {/* Catalog Content: List or Grid */}
+            {activeProducts.length === 0 ? (
+              <div className="card-surface p-12 text-center">
+                <ShoppingCart className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+                <p className="font-display font-semibold text-[#111827]">
+                  No se encontraron productos
+                </p>
+                <p className="text-xs text-slate-400 mt-1">
+                  Prueba con otro término de búsqueda o selecciona la categoría Todos.
+                </p>
+              </div>
+            ) : posViewMode === 'list' ? (
+              <div className="card-surface overflow-hidden border border-slate-100/90 rounded-2xl">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-slate-100 text-[10px] font-semibold text-slate-400 uppercase tracking-wider bg-[#FAFBFC] leading-tight">
+                        <th className="py-3 pl-3.5 pr-1.5">Producto</th>
+                        <th className="py-3 px-1 text-center whitespace-nowrap">Stock</th>
+                        <th className="py-3 px-1.5 text-right whitespace-nowrap">
+                          Precio<br />USD
+                        </th>
+                        <th className="py-3 px-1.5 text-right whitespace-nowrap">
+                          Precio<br />Bs.
+                        </th>
+                        <th
+                          className={`py-3 px-1.5 text-right whitespace-nowrap ${
+                            isCasheaActive
+                              ? 'text-indigo-600 bg-indigo-50/50'
+                              : 'text-indigo-500/80'
+                          }`}
+                        >
+                          Precio USD<br />Cashea
+                        </th>
+                        <th
+                          className={`py-3 px-1.5 text-right whitespace-nowrap ${
+                            isCasheaActive
+                              ? 'text-indigo-600 bg-indigo-50/50'
+                              : 'text-indigo-500/80'
+                          }`}
+                        >
+                          Precio Bs.<br />Cashea
+                        </th>
+                        <th className="py-3 pl-1 pr-3 text-center whitespace-nowrap">
+                          Agregar
+                        </th>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-[12px]">
+                      {activeProducts.map((product) => {
+                        const priceUsd = Number(product.price_usd_tienda || 0);
+                        const priceBs = Number(product.price_bs || (priceUsd * Number(settings?.tasa_interna || 960)));
+                        const casheaUsd = Number(product.price_cashea || (priceUsd * (1 + casheaPercent / 100)));
+                        const casheaBs = Number(product.price_cashea_bs || (casheaUsd * Number(settings?.tasa_interna || 960)));
+                        const isLowStock = product.stock <= (product.min_stock || 5);
+                        const outOfStock = product.stock <= 0;
+
+                        return (
+                          <tr
+                            key={product.id}
+                            onClick={() => onProductClick(product)}
+                            className="hover:bg-[#F7FAF9] transition-colors group cursor-pointer"
+                          >
+                            <td className="py-2.5 pl-3.5 pr-1.5">
+                              <div className="flex items-center gap-2">
+                                <ProductThumbnail product={product} size="sm" />
+                                <div className="min-w-0 max-w-[170px] sm:max-w-[210px]">
+                                  <p className="font-semibold text-[#111827] leading-snug line-clamp-2">
+                                    {product.name}
+                                  </p>
+                                  <p className="text-[10.5px] text-slate-400 truncate mt-0.5">
+                                    <span className="font-mono-num font-semibold text-slate-500">
+                                      {product.code}
+                                    </span>{' '}
+                                    · {product.category} · [{product.unit}]
+                                  </p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="py-2.5 px-1 text-center whitespace-nowrap">
+                              <span
+                                className={`inline-flex items-center px-1.5 py-0.5 rounded-lg font-mono-num text-[10.5px] font-semibold ${
+                                  outOfStock
+                                    ? 'bg-rose-50 text-rose-600'
+                                    : isLowStock
+                                      ? 'bg-amber-50 text-amber-700'
+                                      : 'bg-[#F4F6F8] text-slate-600'
+                                }`}
+                              >
+                                {product.stock} {product.unit}
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-1.5 text-right font-mono-num font-bold text-[#111827] whitespace-nowrap">
+                              ${priceUsd.toFixed(2)}
+                            </td>
+                            <td className="py-2.5 px-1.5 text-right font-mono-num font-semibold text-[#074E4A] whitespace-nowrap">
+                              Bs. {priceBs.toLocaleString('es-VE', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                            </td>
+                            <td
+                              className={`py-2.5 px-1.5 text-right font-mono-num font-bold text-indigo-600 whitespace-nowrap ${
+                                isCasheaActive ? 'bg-indigo-50/40' : ''
+                              }`}
+                            >
+                              ${casheaUsd.toFixed(2)}
+                            </td>
+                            <td
+                              className={`py-2.5 px-1.5 text-right font-mono-num font-semibold text-violet-700 whitespace-nowrap ${
+                                isCasheaActive ? 'bg-indigo-50/40' : ''
+                              }`}
+                            >
+                              Bs. {casheaBs.toLocaleString('es-VE', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                            </td>
+                            <td className="py-2.5 pl-1 pr-3 text-center">
+                              <button
+                                type="button"
+                                disabled={outOfStock}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onProductClick(product);
+                                }}
+                                aria-label={`Agregar ${product.name} al carrito`}
+                                className="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-[#F2F7F6] text-[#074E4A] hover:bg-[#074E4A] hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                              >
+                                <Plus className="w-4 h-4" />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                {activeProducts.map((product) => {
+                  const priceUsd = Number(product.price_usd_tienda || 0);
+                  const priceBs = Number(product.price_bs || (priceUsd * Number(settings?.tasa_interna || 960)));
+                  const casheaUsd = Number(product.price_cashea || (priceUsd * (1 + casheaPercent / 100)));
+                  const casheaBs = Number(product.price_cashea_bs || (casheaUsd * Number(settings?.tasa_interna || 960)));
+                  const isLowStock = product.stock <= (product.min_stock || 5);
+                  const outOfStock = product.stock <= 0;
+
+                  return (
+                    <div
+                      key={product.id}
+                      onClick={() => onProductClick(product)}
+                      className="card-surface card-surface-hover p-4 flex flex-col justify-between gap-3.5 cursor-pointer"
+                    >
+                      <div className="flex items-start gap-3">
+                        <ProductThumbnail product={product} size="md" />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-mono-num text-[11px] font-medium text-slate-400">
+                              {product.code}
+                            </span>
+                            <span
+                              className={`font-mono-num text-[11px] font-semibold ${
+                                outOfStock ? 'text-rose-600' : isLowStock ? 'text-amber-600' : 'text-slate-500'
+                              }`}
+                            >
+                              {product.stock} {product.unit}
+                            </span>
+                          </div>
+                          <h3 className="font-semibold text-[13.5px] text-[#111827] leading-snug mt-0.5 line-clamp-2">
+                            {product.name}
+                          </h3>
+                          <p className="text-[11px] text-slate-400 mt-0.5">
+                            {product.category}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <div
+                          className={`rounded-xl px-2.5 py-2 border transition-colors ${
+                            !isCasheaActive
+                              ? 'bg-[#F4F8F7] border-[#074E4A]/15'
+                              : 'bg-[#F6F8FA] border-slate-100'
+                          }`}
+                        >
+                          <p className="text-[9.5px] font-semibold uppercase tracking-wide text-slate-400 whitespace-nowrap">
+                            Precio Estándar
+                          </p>
+                          <p className="font-mono-num text-[13px] font-bold text-[#111827] leading-tight mt-0.5 whitespace-nowrap">
+                            ${priceUsd.toFixed(2)}
+                          </p>
+                          <p className="font-mono-num text-[11px] font-semibold text-[#074E4A] leading-tight mt-0.5 whitespace-nowrap">
+                            Bs. {priceBs.toLocaleString('es-VE', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                          </p>
+                        </div>
+                        <div
+                          className={`rounded-xl px-2.5 py-2 border transition-colors ${
+                            isCasheaActive
+                              ? 'bg-indigo-50/70 border-indigo-200'
+                              : 'bg-[#F6F8FA] border-slate-100'
+                          }`}
+                        >
+                          <p className="text-[9.5px] font-semibold uppercase tracking-wide text-indigo-500 whitespace-nowrap">
+                            Cashea (+{casheaPercent}%)
+                          </p>
+                          <p className="font-mono-num text-[13px] font-bold text-indigo-600 leading-tight mt-0.5 whitespace-nowrap">
+                            ${casheaUsd.toFixed(2)}
+                          </p>
+                          <p className="font-mono-num text-[11px] font-semibold text-violet-700 leading-tight mt-0.5 whitespace-nowrap">
+                            Bs. {casheaBs.toLocaleString('es-VE', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                          </p>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        disabled={outOfStock}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onProductClick(product);
+                        }}
+                        className="w-full px-3 py-2 rounded-xl bg-[#074E4A] hover:bg-[#053E3B] text-white text-xs font-semibold flex items-center justify-center gap-1.5 disabled:opacity-40 transition-colors cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Agregar</span>
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* ========================================================= */}
