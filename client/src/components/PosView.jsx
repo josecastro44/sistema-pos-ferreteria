@@ -139,27 +139,13 @@ export default function PosView({
   const activeProducts = products.filter(p => p.is_active !== 0);
 
   return (
-    <div className="space-y-4 w-full max-w-[1720px] mx-auto">
+    <div className="w-full max-w-[1780px] mx-auto pb-6">
       {/* ========================================================= */}
-      {/* TITLE & SUBTITLE OUTSIDE CARD (SCREENSHOT 7 & MODEL)       */}
+      {/* MAIN LAYOUT: CATALOG (LEFT 7-8 COLS) + CART (RIGHT 4-5 COLS) */}
       {/* ========================================================= */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="font-display font-bold text-xl text-[#111827] tracking-tight">
-            Punto de Venta
-          </h1>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Facturación rápida en Divisas, Bolívares, BCV y Cashea
-          </p>
-        </div>
-      </div>
-
-      {/* ========================================================= */}
-      {/* MAIN LAYOUT: CATALOG (LEFT 8-9 COLS) + CART (RIGHT 3-4)   */}
-      {/* ========================================================= */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 xl:gap-6 items-start">
         {/* CATALOG CONTAINER CARD */}
-        <div className="lg:col-span-8 xl:col-span-8 2xl:col-span-8 flex flex-col gap-4 min-w-0">
+        <div className="lg:col-span-7 xl:col-span-7 2xl:col-span-8 flex flex-col gap-4 min-w-0">
           <div className="card-surface p-5 flex flex-col gap-4">
             {/* Catalog Card Header matching Screenshot 7 & 8 */}
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -500,289 +486,298 @@ export default function PosView({
         </div>
 
         {/* ========================================================= */}
-        {/* CART CONTAINER (DESKTOP ONLY - COMPACTO Y PROPORCIONADO)  */}
+        {/* CART CONTAINER (ORDEN DE VENTA - AMPLIADO Y PROPORCIONADO) */}
         {/* ========================================================= */}
-        <div className="hidden lg:block lg:col-span-4 xl:col-span-4 2xl:col-span-3 bg-white rounded-2xl border border-gray-100 shadow-xs p-3.5 sm:p-4 space-y-3 sticky top-18">
-          {/* Header matching Screenshot 1 */}
-          <div className="flex items-center justify-between pb-2.5 border-b border-gray-100">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-emerald-50 text-[#074E4A] flex items-center justify-center font-bold shrink-0">
-                <ShoppingCart className="w-4 h-4" />
+        <div className="hidden lg:block lg:col-span-5 xl:col-span-5 2xl:col-span-4 min-w-0">
+          <div className="card-surface p-5 sm:p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col gap-4 sticky top-4">
+            {/* Header matching Screenshot 1 */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-[#F2F7F6] text-[#074E4A] flex items-center justify-center font-bold shrink-0 shadow-2xs">
+                  <ShoppingCart className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="font-display font-bold text-base sm:text-[17px] text-[#111827] leading-tight">
+                    Orden de Venta
+                  </h3>
+                  <p className="text-xs text-slate-400 font-medium mt-0.5">
+                    {isCasheaActive ? `Modalidad Cashea (+${casheaPercent}%)` : 'Precio estándar tienda'}
+                  </p>
+                </div>
               </div>
-              <div className="min-w-0">
-                <h3 className="font-display font-bold text-sm text-[#111827] leading-tight">Orden de Venta</h3>
-                <p className="text-[11px] text-slate-400 font-medium">
-                  {isCasheaActive ? `Modalidad Cashea (+${casheaPercent}%)` : 'Precio estándar tienda'}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-1.5">
-              {isCasheaActive && (
-                <span className="text-[9px] bg-purple-100 text-purple-800 font-black px-1.5 py-0.5 rounded-md">
-                  CASHEA
+              <div className="flex items-center gap-2">
+                {isCasheaActive && (
+                  <span className="text-[10px] bg-purple-100 text-purple-800 font-bold px-2 py-0.5 rounded-lg">
+                    CASHEA
+                  </span>
+                )}
+                <span className="text-xs bg-[#F4F6F8] text-[#111827] font-mono-num font-bold px-3 py-1 rounded-xl">
+                  {cart.length} {cart.length === 1 ? 'ítem' : 'ítems'}
                 </span>
-              )}
-              <span className="text-xs bg-[#F4F6F8] text-[#111827] font-mono-num font-semibold px-2.5 py-1 rounded-xl">
-                {cart.length} {cart.length === 1 ? 'ítem' : 'ítems'}
-              </span>
-            </div>
-          </div>
-
-          {/* Smart Client Selector matching Screenshot 1 & 3 */}
-          <div ref={clientPickerRef} className="relative">
-            <div className="bg-[#F6F8FA] rounded-xl p-3 border border-transparent focus-within:border-[#074E4A]/30 transition-colors">
-              <div className="flex items-center justify-between gap-2 mb-1.5">
-                <span className="text-[11px] font-medium text-slate-400">
-                  Cliente (Nombre / Cédula) · [F3]
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setClientPickerOpen(false);
-                    setQuickClientDraft(clientSearchQuery);
-                    setIsQuickClientOpen(true);
-                  }}
-                  className="px-2.5 py-1 rounded-lg bg-[#E6F7F5] hover:bg-[#074E4A] text-[#074E4A] hover:text-white text-[11px] font-semibold inline-flex items-center gap-1 transition-colors whitespace-nowrap cursor-pointer shadow-2xs"
-                >
-                  <UserPlus className="w-3 h-3" />
-                  <span>+ Nuevo</span>
-                </button>
               </div>
-
-              <button
-                type="button"
-                aria-expanded={clientPickerOpen}
-                onClick={() => setClientPickerOpen((prev) => !prev)}
-                className="w-full flex items-center justify-between gap-2 text-left group cursor-pointer"
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-7 h-7 rounded-lg bg-white text-[#074E4A] flex items-center justify-center shrink-0 border border-slate-200/60 shadow-2xs">
-                    <User className="w-4 h-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[13px] font-semibold text-[#111827] truncate">
-                      {selectedClient?.name || 'Cliente Mostrador'}
-                    </p>
-                    <p className="text-[11px] font-mono-num text-slate-400 truncate">
-                      {selectedClient?.id_card || 'V-00000000'}
-                      {selectedClient?.phone ? ` · ${selectedClient.phone}` : ''}
-                    </p>
-                  </div>
-                </div>
-                <ChevronDown
-                  className={`w-4 h-4 text-slate-400 shrink-0 transition-transform ${
-                    clientPickerOpen ? 'rotate-180 text-[#074E4A]' : ''
-                  }`}
-                />
-              </button>
             </div>
 
-            {/* Client Search & Dropdown Popover */}
-            {clientPickerOpen && (
-              <div className="absolute left-0 right-0 mt-1.5 bg-white rounded-2xl shadow-xl border border-slate-100 z-40 overflow-hidden animate-in fade-in duration-100">
-                <div className="p-2.5 border-b border-slate-100">
-                  <div className="relative">
-                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                    <input
-                      ref={clientSearchInputRef}
-                      type="search"
-                      value={clientSearchQuery}
-                      onChange={(e) => setClientSearchQuery(e.target.value)}
-                      placeholder="Buscar cédula, nombre o teléfono..."
-                      className="w-full bg-[#F6F8FA] focus:bg-white rounded-xl pl-8 pr-3 py-2 text-xs text-[#111827] placeholder:text-slate-400 border border-transparent focus:border-[#074E4A]/30 focus:outline-none transition-colors"
-                      autoFocus
-                    />
-                  </div>
-                </div>
-
-                <div className="max-h-52 overflow-y-auto divide-y divide-slate-50">
-                  {matchingClients.length === 0 ? (
-                    <div className="px-3.5 py-4 text-center">
-                      <p className="text-xs font-medium text-slate-500">
-                        No existe ningún cliente con &ldquo;{clientSearchQuery}&rdquo;
-                      </p>
-                      <p className="text-[11px] text-slate-400 mt-0.5">
-                        Regístralo al instante sin salir de caja
-                      </p>
-                    </div>
-                  ) : (
-                    matchingClients.map((c) => {
-                      const isSelected = selectedClient?.id === c.id;
-                      return (
-                        <button
-                          key={c.id}
-                          type="button"
-                          onClick={() => handleSelectClient(c)}
-                          className={`w-full px-3.5 py-2.5 flex items-center justify-between gap-2 text-left transition-colors cursor-pointer ${
-                            isSelected ? 'bg-[#F2F7F6]' : 'hover:bg-[#FAFBFC]'
-                          }`}
-                        >
-                          <div className="min-w-0">
-                            <p className="text-xs font-semibold text-[#111827] truncate">
-                              {c.name}
-                            </p>
-                            <p className="text-[11px] font-mono-num text-slate-400 truncate">
-                              {c.id_card}
-                              {c.phone ? ` · ${c.phone}` : ''}
-                            </p>
-                          </div>
-                          {isSelected && (
-                            <Check className="w-4 h-4 text-[#074E4A] shrink-0" />
-                          )}
-                        </button>
-                      );
-                    })
-                  )}
-                </div>
-
-                <div className="p-2 bg-[#FAFBFC] border-t border-slate-100">
+            {/* Smart Client Selector matching Screenshot 1 & 3 */}
+            <div ref={clientPickerRef} className="relative">
+              <div className="bg-[#F6F8FA] rounded-2xl p-3.5 sm:p-4 border border-transparent focus-within:border-[#074E4A]/30 transition-colors">
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <span className="text-xs font-semibold text-slate-500">
+                    Cliente (Nombre / Cédula) · [F3]
+                  </span>
                   <button
                     type="button"
                     onClick={() => {
-                      const typed = clientSearchQuery;
                       setClientPickerOpen(false);
-                      setClientSearchQuery('');
-                      setQuickClientDraft(typed);
+                      setQuickClientDraft(clientSearchQuery);
                       setIsQuickClientOpen(true);
                     }}
-                    className="w-full py-2 px-3 rounded-xl bg-[#074E4A] hover:bg-[#053E3B] text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                    className="px-3 py-1.5 rounded-xl bg-[#E6F7F5] hover:bg-[#074E4A] text-[#074E4A] hover:text-white text-xs font-semibold inline-flex items-center gap-1.5 transition-colors whitespace-nowrap cursor-pointer shadow-2xs"
                   >
                     <UserPlus className="w-3.5 h-3.5" />
-                    <span className="truncate">
-                      {clientSearchQuery.trim()
-                        ? `Registrar "${clientSearchQuery.trim()}" ahora`
-                        : 'Registrar nuevo cliente'}
-                    </span>
+                    <span>+ Nuevo</span>
                   </button>
                 </div>
-              </div>
-            )}
-          </div>
 
-          {/* Items List */}
-          <div className="space-y-1.5 max-h-[300px] overflow-y-auto pr-1">
-            {cart.length === 0 ? (
-              <div className="py-6 text-center text-gray-400 rounded-xl bg-gray-50/50 border border-dashed border-gray-200/80">
-                <ShoppingCart className="w-6 h-6 mx-auto stroke-1 text-gray-300 mb-1" />
-                <p className="text-xs font-medium text-gray-600">Carrito vacío</p>
-                <p className="text-[10px] text-gray-400 mt-0.5">Haz clic en un producto o presiona [F2]</p>
-              </div>
-            ) : (
-              cart.map(item => (
-                <div
-                  key={item.product_id}
-                  className="p-2 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-between gap-1.5"
+                <button
+                  type="button"
+                  aria-expanded={clientPickerOpen}
+                  onClick={() => setClientPickerOpen((prev) => !prev)}
+                  className="w-full flex items-center justify-between gap-3 text-left group cursor-pointer"
                 >
-                  <div className="flex-1 min-w-0">
-                    <div className="font-bold text-xs text-gray-900 truncate">{item.name}</div>
-                    <div className="text-[10px] font-mono text-gray-500">
-                      ${item.price_usd_tienda.toFixed(2)} • Bs. {item.price_bs.toLocaleString('es-VE')}
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-9 h-9 rounded-xl bg-white text-[#074E4A] flex items-center justify-center shrink-0 border border-slate-200/60 shadow-2xs">
+                      <User className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[14px] font-bold text-[#111827] truncate">
+                        {selectedClient?.name || 'Cliente Mostrador'}
+                      </p>
+                      <p className="text-xs font-mono-num text-slate-400 truncate mt-0.5">
+                        {selectedClient?.id_card || 'V-00000000'}
+                        {selectedClient?.phone ? ` · ${selectedClient.phone}` : ''}
+                      </p>
+                    </div>
+                  </div>
+                  <ChevronDown
+                    className={`w-4 h-4 text-slate-400 shrink-0 transition-transform ${
+                      clientPickerOpen ? 'rotate-180 text-[#074E4A]' : ''
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {/* Client Search & Dropdown Popover */}
+              {clientPickerOpen && (
+                <div className="absolute left-0 right-0 mt-1.5 bg-white rounded-2xl shadow-xl border border-slate-100 z-40 overflow-hidden animate-in fade-in duration-100">
+                  <div className="p-3 border-b border-slate-100">
+                    <div className="relative">
+                      <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <input
+                        ref={clientSearchInputRef}
+                        type="search"
+                        value={clientSearchQuery}
+                        onChange={(e) => setClientSearchQuery(e.target.value)}
+                        placeholder="Buscar cédula, nombre o teléfono..."
+                        className="w-full bg-[#F6F8FA] focus:bg-white rounded-xl pl-9 pr-3 py-2.5 text-xs sm:text-sm text-[#111827] placeholder:text-slate-400 border border-transparent focus:border-[#074E4A]/30 focus:outline-none transition-colors"
+                        autoFocus
+                      />
                     </div>
                   </div>
 
-                  {/* Quantity Changer */}
-                  <div className="flex items-center gap-0.5 bg-white border border-gray-200 rounded-lg p-0.5">
+                  <div className="max-h-56 overflow-y-auto divide-y divide-slate-50">
+                    {matchingClients.length === 0 ? (
+                      <div className="px-4 py-5 text-center">
+                        <p className="text-xs font-medium text-slate-500">
+                          No existe ningún cliente con &ldquo;{clientSearchQuery}&rdquo;
+                        </p>
+                        <p className="text-[11px] text-slate-400 mt-1">
+                          Regístralo al instante sin salir de caja
+                        </p>
+                      </div>
+                    ) : (
+                      matchingClients.map((c) => {
+                        const isSelected = selectedClient?.id === c.id;
+                        return (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onClick={() => handleSelectClient(c)}
+                            className={`w-full px-4 py-3 flex items-center justify-between gap-2 text-left transition-colors cursor-pointer ${
+                              isSelected ? 'bg-[#F2F7F6]' : 'hover:bg-[#FAFBFC]'
+                            }`}
+                          >
+                            <div className="min-w-0">
+                              <p className="text-xs sm:text-sm font-bold text-[#111827] truncate">
+                                {c.name}
+                              </p>
+                              <p className="text-xs font-mono-num text-slate-400 truncate">
+                                {c.id_card}
+                                {c.phone ? ` · ${c.phone}` : ''}
+                              </p>
+                            </div>
+                            {isSelected && (
+                              <Check className="w-4 h-4 text-[#074E4A] shrink-0" />
+                            )}
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+
+                  <div className="p-2.5 bg-[#FAFBFC] border-t border-slate-100">
                     <button
-                      onClick={() => updateCartQuantity(item.product_id, -1)}
-                      className="w-4 h-4 flex items-center justify-center text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded text-xs cursor-pointer"
+                      type="button"
+                      onClick={() => {
+                        const typed = clientSearchQuery;
+                        setClientPickerOpen(false);
+                        setClientSearchQuery('');
+                        setQuickClientDraft(typed);
+                        setIsQuickClientOpen(true);
+                      }}
+                      className="w-full py-2.5 px-3.5 rounded-xl bg-[#074E4A] hover:bg-[#053E3B] text-white text-xs font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-xs"
                     >
-                      <Minus className="w-2.5 h-2.5" />
-                    </button>
-                    <span className="w-6 text-center font-mono font-bold text-xs text-gray-900">
-                      {item.quantity}
-                    </span>
-                    <button
-                      onClick={() => updateCartQuantity(item.product_id, 1)}
-                      className="w-4 h-4 flex items-center justify-center text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded text-xs cursor-pointer"
-                    >
-                      <Plus className="w-2.5 h-2.5" />
+                      <UserPlus className="w-4 h-4" />
+                      <span className="truncate">
+                        {clientSearchQuery.trim()
+                          ? `Registrar "${clientSearchQuery.trim()}" ahora`
+                          : 'Registrar nuevo cliente'}
+                      </span>
                     </button>
                   </div>
-
-                  {/* Subtotal */}
-                  <div className="text-right min-w-[65px]">
-                    <div className="font-mono font-bold text-xs text-gray-900">
-                      ${(item.price_usd_tienda * item.quantity).toFixed(2)}
-                    </div>
-                    <div className="font-mono text-[10px] text-[#074E4A]">
-                      Bs. {(item.price_bs * item.quantity).toLocaleString('es-VE')}
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => removeFromCart(item.product_id)}
-                    className="p-1 text-gray-400 hover:text-rose-600 transition-colors cursor-pointer"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </button>
                 </div>
-              ))
-            )}
-          </div>
-
-          {/* Totals Breakdown (Deep Forest Teal Accent Card) */}
-          <div className="pt-2 border-t border-gray-100 space-y-2">
-            <div className="deep-teal-card rounded-2xl p-4 text-white">
-              <div className="flex items-baseline justify-between gap-2">
-                <span className="text-xs font-medium text-emerald-100/85">
-                  Total Dólares
-                </span>
-                <span className="font-mono-num font-bold text-[24px] sm:text-[26px] tracking-tight">
-                  ${cartTotals.total_usd_tienda.toFixed(2)}
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between mt-2 pt-2.5 border-t border-white/10 text-xs">
-                <span className="text-emerald-100/80">Equivalente Bolívares</span>
-                <span className="font-mono-num font-bold text-[#BEF264]">
-                  Bs. {cartTotals.total_bs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between mt-1 text-[11px] text-emerald-100/70">
-                <span>Referencia BCV (Bs. {Number(settings?.tasa_bcv || 866.56).toFixed(2)})</span>
-                <span className="font-mono-num">
-                  ${(cartTotals.total_bs / Number(settings?.tasa_bcv || 866.56)).toFixed(2)}
-                </span>
-              </div>
+              )}
             </div>
 
-            {/* Presupuesto Button & Cobrar Button */}
-            <div className="space-y-1.5 pt-0.5">
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={clearCart}
-                  disabled={cart.length === 0}
-                  className="py-2.5 px-3 rounded-xl bg-[#F4F6F8] hover:bg-slate-200/80 text-slate-600 font-semibold text-xs transition-colors disabled:opacity-40 cursor-pointer"
-                >
-                  Vaciar
-                </button>
-                <button
-                  type="button"
-                  onClick={onGenerateQuote}
-                  disabled={cart.length === 0}
-                  className="py-2.5 px-3 rounded-xl border border-[#074E4A]/25 text-[#074E4A] hover:bg-[#F2F7F6] font-semibold text-xs flex items-center justify-center gap-1.5 disabled:opacity-40 transition-colors cursor-pointer"
-                  title="Generar cotización formal sin descontar inventario"
-                >
-                  <FileText className="w-3.5 h-3.5" />
-                  <span>Presupuesto</span>
-                </button>
+            {/* Items List */}
+            <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1">
+              {cart.length === 0 ? (
+                <div className="py-10 text-center text-slate-400 rounded-2xl bg-[#FAFBFC] border border-dashed border-slate-200">
+                  <ShoppingCart className="w-8 h-8 mx-auto stroke-1 text-slate-300 mb-2" />
+                  <p className="text-xs sm:text-sm font-semibold text-slate-600">Carrito vacío</p>
+                  <p className="text-xs text-slate-400 mt-0.5">Haz clic en un producto o presiona [F2]</p>
+                </div>
+              ) : (
+                cart.map(item => (
+                  <div
+                    key={item.product_id}
+                    className="p-3 rounded-xl bg-[#F8FAFB] border border-slate-100 flex items-center justify-between gap-2.5 hover:border-slate-200 transition-colors"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="font-bold text-[13px] text-[#111827] truncate">{item.name}</div>
+                      <div className="text-xs font-mono text-slate-400 mt-0.5">
+                        ${item.price_usd_tienda.toFixed(2)} • Bs. {item.price_bs.toLocaleString('es-VE')}
+                      </div>
+                    </div>
+
+                    {/* Quantity Changer */}
+                    <div className="flex items-center gap-1 bg-white border border-slate-200/80 rounded-xl p-1 shadow-2xs">
+                      <button
+                        onClick={() => updateCartQuantity(item.product_id, -1)}
+                        className="w-6 h-6 flex items-center justify-center text-slate-500 hover:text-white hover:bg-[#074E4A] rounded-lg text-xs cursor-pointer transition-colors"
+                      >
+                        <Minus className="w-3 h-3" />
+                      </button>
+                      <span className="w-7 text-center font-mono font-bold text-xs text-[#111827]">
+                        {item.quantity}
+                      </span>
+                      <button
+                        onClick={() => updateCartQuantity(item.product_id, 1)}
+                        className="w-6 h-6 flex items-center justify-center text-slate-500 hover:text-white hover:bg-[#074E4A] rounded-lg text-xs cursor-pointer transition-colors"
+                      >
+                        <Plus className="w-3 h-3" />
+                      </button>
+                    </div>
+
+                    {/* Subtotal */}
+                    <div className="text-right min-w-[75px]">
+                      <div className="font-mono-num font-bold text-sm text-[#111827]">
+                        ${(item.price_usd_tienda * item.quantity).toFixed(2)}
+                      </div>
+                      <div className="font-mono-num text-[11px] text-[#074E4A] font-semibold">
+                        Bs. {(item.price_bs * item.quantity).toLocaleString('es-VE')}
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => removeFromCart(item.product_id)}
+                      className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
+                      title="Quitar artículo"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Totals Breakdown (Deep Forest Teal Accent Card) */}
+            <div className="pt-2 border-t border-slate-100 flex flex-col gap-3">
+              <div className="deep-teal-card rounded-2xl p-5 text-white shadow-md relative overflow-hidden">
+                <div
+                  className="absolute -right-8 -top-8 w-28 h-28 rounded-full bg-white/[0.05] pointer-events-none"
+                  aria-hidden="true"
+                />
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="text-[13px] font-medium text-emerald-100/90">
+                    Total Dólares
+                  </span>
+                  <span className="font-mono-num font-extrabold text-[30px] sm:text-[34px] tracking-tight">
+                    ${cartTotals.total_usd_tienda.toFixed(2)}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/10 text-xs sm:text-[13px]">
+                  <span className="text-emerald-100/80">Equivalente Bolívares</span>
+                  <span className="font-mono-num font-bold text-[#BEF264]">
+                    Bs. {cartTotals.total_bs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between mt-1.5 text-xs text-emerald-100/70">
+                  <span>Referencia BCV (Bs. {Number(settings?.tasa_bcv || 866.56).toFixed(2)})</span>
+                  <span className="font-mono-num">
+                    ${(cartTotals.total_bs / Number(settings?.tasa_bcv || 866.56)).toFixed(2)}
+                  </span>
+                </div>
               </div>
 
-              <button
-                type="button"
-                onClick={onOpenCheckout}
-                disabled={cart.length === 0}
-                className={`w-full py-3.5 px-4 rounded-xl text-white font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-45 cursor-pointer transition-colors shadow-sm ${
-                  isCasheaActive
-                    ? 'bg-purple-600 hover:bg-purple-700'
-                    : 'bg-[#074E4A] hover:bg-[#053E3B]'
-                }`}
-              >
-                <DollarSign className="w-4 h-4" />
-                <span>Cobrar Orden [F4]</span>
-              </button>
+              {/* Presupuesto Button & Cobrar Button */}
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-2.5">
+                  <button
+                    type="button"
+                    onClick={clearCart}
+                    disabled={cart.length === 0}
+                    className="py-3 px-4 rounded-xl bg-[#F4F6F8] hover:bg-slate-200/80 text-slate-700 font-semibold text-xs sm:text-[13px] transition-colors disabled:opacity-40 cursor-pointer text-center"
+                  >
+                    Vaciar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onGenerateQuote}
+                    disabled={cart.length === 0}
+                    className="py-3 px-4 rounded-xl border border-[#074E4A]/25 text-[#074E4A] hover:bg-[#F2F7F6] font-semibold text-xs sm:text-[13px] flex items-center justify-center gap-2 disabled:opacity-40 transition-colors cursor-pointer"
+                    title="Generar cotización formal sin descontar inventario"
+                  >
+                    <FileText className="w-4 h-4" />
+                    <span>Presupuesto</span>
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={onOpenCheckout}
+                  disabled={cart.length === 0}
+                  className={`w-full py-4 px-5 rounded-2xl text-white font-bold text-sm sm:text-[15px] flex items-center justify-center gap-2.5 disabled:opacity-45 cursor-pointer transition-colors shadow-md ${
+                    isCasheaActive
+                      ? 'bg-purple-600 hover:bg-purple-700'
+                      : 'bg-[#074E4A] hover:bg-[#053E3B]'
+                  }`}
+                >
+                  <DollarSign className="w-4 h-4" />
+                  <span>Cobrar Orden [F4]</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
