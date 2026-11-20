@@ -12,8 +12,11 @@ import {
   Trash2,
   Eye,
   EyeOff,
-  Building
+  Building,
+  LayoutGrid,
+  List
 } from 'lucide-react';
+import ProductThumbnail from './ProductThumbnail';
 
 export default function EditProductView({
   products = [],
@@ -26,6 +29,7 @@ export default function EditProductView({
 }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCat, setSelectedCat] = useState('Todos');
+  const [layoutMode, setLayoutMode] = useState('list'); // 'list' by default, or 'grid'
   const [deleteProductConfirm, setDeleteProductConfirm] = useState(null);
   const [togglingId, setTogglingId] = useState(null);
 
@@ -35,6 +39,8 @@ export default function EditProductView({
   };
 
   const tasaBcvVal = Number(settings?.tasa_bcv || 883.40);
+  const tasaTienda = Number(settings?.tasa_interna || 960);
+  const casheaPercent = Number(settings?.cashea_percent || 15);
 
   const filtered = products.filter(p => {
     const term = searchTerm.toLowerCase();
@@ -47,6 +53,8 @@ export default function EditProductView({
     const matchCat = selectedCat === 'Todos' || p.category === selectedCat;
     return matchSearch && matchCat;
   });
+
+  const activeCount = products.filter(p => p.is_active !== 0).length;
 
   const handleToggleActive = async (prod) => {
     setTogglingId(prod.id);
@@ -82,45 +90,82 @@ export default function EditProductView({
   };
 
   return (
-    <div className="space-y-4 max-w-[1720px] mx-auto pb-8">
+    <div className="space-y-4 max-w-[1780px] mx-auto pb-8">
       {/* Header bar */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-5 shadow-xs flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
+      <div className="card-surface p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold shrink-0">
             <Pencil className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-gray-900 tracking-tight">Editor & Gestión de Catálogo</h2>
-            <p className="text-xs text-gray-400">
+            <div className="flex items-center gap-2.5">
+              <h2 className="font-display font-bold text-[18px] text-[#111827] tracking-tight">
+                Editor & Gestión de Catálogo
+              </h2>
+              <span className="px-2.5 py-0.5 rounded-lg bg-[#F2F7F6] text-[#074E4A] font-mono-num text-[11px] font-semibold">
+                {activeCount} activos · {products.length} total
+              </span>
+            </div>
+            <p className="text-xs text-slate-400 mt-0.5">
               Modifica precios, activa o desactiva productos del POS, gestiona códigos de proveedor y elimina artículos
             </p>
           </div>
         </div>
 
-        {/* Search */}
-        <div className="relative w-72 sm:w-80">
-          <Search className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
-          <input
-            type="text"
-            autoFocus
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Buscar por código, proveedor o nombre..."
-            className="w-full pl-9 pr-3 py-1.5 bg-gray-50 border border-gray-200/80 rounded-xl text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#074E4A]/20 focus:border-[#074E4A]"
-          />
+        {/* Right Controls: Search + View Mode Switcher */}
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Search */}
+          <div className="relative w-64 sm:w-80">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="search"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Buscar por código, proveedor o nombre..."
+              className="w-full bg-[#F6F8FA] focus:bg-white text-xs text-[#111827] placeholder:text-slate-400 pl-9 pr-3.5 py-2 rounded-xl border border-transparent focus:border-[#074E4A]/30 focus:outline-none transition-colors"
+            />
+          </div>
+
+          {/* View Switcher: Lista vs Cuadrícula */}
+          <div className="flex items-center bg-[#F4F6F8] p-1 rounded-xl">
+            <button
+              type="button"
+              onClick={() => setLayoutMode('list')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                layoutMode === 'list'
+                  ? 'bg-white text-[#111827] shadow-xs'
+                  : 'text-slate-500 hover:text-[#111827]'
+              }`}
+            >
+              <List className="w-3.5 h-3.5" />
+              <span>Lista</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setLayoutMode('grid')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                layoutMode === 'grid'
+                  ? 'bg-white text-[#111827] shadow-xs'
+                  : 'text-slate-500 hover:text-[#111827]'
+              }`}
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+              <span>Cuadrícula</span>
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Category Pills */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+      {/* Category Filter Pills */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
         {categories.map(cat => (
           <button
             key={cat}
             onClick={() => setSelectedCat(cat)}
-            className={`px-3 py-1 rounded-xl font-medium whitespace-nowrap transition-all border text-xs cursor-pointer ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
               selectedCat === cat
-                ? 'bg-white border-gray-300 text-[#074E4A] font-semibold shadow-xs ring-1 ring-[#074E4A]/10'
-                : 'bg-white border-gray-200/80 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
+                ? 'bg-[#074E4A] text-white shadow-xs'
+                : 'bg-white text-slate-600 hover:text-[#111827] border border-slate-100 hover:border-slate-200'
             }`}
           >
             {cat}
@@ -128,192 +173,343 @@ export default function EditProductView({
         ))}
       </div>
 
-      {/* Products Grid to Edit */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-xs p-4">
-        {filtered.length === 0 ? (
-          <div className="py-16 text-center text-gray-400">
-            <Box className="w-10 h-10 mx-auto stroke-1 text-gray-300 mb-2" />
-            <p className="text-sm font-semibold text-gray-600">No se encontraron productos</p>
-            <p className="text-xs text-gray-400">Prueba con otro término de búsqueda o categoría</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
-            {filtered.map(prod => {
-              const isActive = prod.is_active !== 0;
-              const displayPriceBs = prod.price_bs || 0;
-              const displayPriceUsdBcv = prod.price_usd_bcv ? Number(prod.price_usd_bcv) : (displayPriceBs / tasaBcvVal);
+      {/* Main Content Area */}
+      {filtered.length === 0 ? (
+        <div className="card-surface p-16 text-center text-slate-400">
+          <Box className="w-10 h-10 mx-auto stroke-1 text-slate-300 mb-2" />
+          <p className="text-sm font-semibold text-slate-700">No se encontraron productos</p>
+          <p className="text-xs text-slate-400 mt-0.5">Prueba con otro término de búsqueda o categoría</p>
+        </div>
+      ) : layoutMode === 'list' ? (
+        /* ========================================================= */
+        /* VISTA EN LISTA (TABLE)                                    */
+        /* ========================================================= */
+        <div className="card-surface overflow-hidden border border-slate-100/90 rounded-2xl">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-slate-100 text-[10px] font-semibold text-slate-400 uppercase tracking-wider bg-[#FAFBFC] leading-tight">
+                  <th className="py-3.5 pl-4 pr-2">Producto</th>
+                  <th className="py-3.5 px-2 text-center whitespace-nowrap">Estado POS</th>
+                  <th className="py-3.5 px-2 text-center whitespace-nowrap">Stock</th>
+                  <th className="py-3.5 px-2 text-right whitespace-nowrap">Precio Tienda ($)</th>
+                  <th className="py-3.5 px-2 text-right whitespace-nowrap">Bs. Tienda</th>
+                  <th className="py-3.5 px-2 text-right whitespace-nowrap">USD BCV ($)</th>
+                  <th className="py-3.5 px-2 text-right whitespace-nowrap">Cashea (+{casheaPercent}%)</th>
+                  <th className="py-3.5 pl-2 pr-4 text-center whitespace-nowrap">Acciones</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-[12px]">
+                {filtered.map(prod => {
+                  const isActive = prod.is_active !== 0;
+                  const priceUsd = Number(prod.price_usd_tienda || 0);
+                  const displayPriceBs = prod.price_bs || (priceUsd * tasaTienda);
+                  const displayPriceUsdBcv = prod.price_usd_bcv ? Number(prod.price_usd_bcv) : (displayPriceBs / tasaBcvVal);
+                  const casheaPrice = prod.price_cashea ? Number(prod.price_cashea) : (priceUsd * (1 + casheaPercent / 100));
+                  const isLowStock = prod.stock <= (prod.min_stock || 5);
+                  const outOfStock = prod.stock <= 0;
 
-              return (
-                <div
-                  key={prod.id}
-                  className={`p-3.5 rounded-xl border flex flex-col justify-between transition-all ${
-                    !isActive
-                      ? 'bg-gray-50/90 border-gray-200 opacity-80'
-                      : 'bg-white border-gray-100 hover:border-gray-200 hover:shadow-xs'
-                  }`}
-                >
-                  <div>
-                    {/* Top Row: Product Card */}
-                    <div className="flex gap-3 items-start">
-                      <div className="w-14 h-14 rounded-xl overflow-hidden bg-white border border-gray-100 shrink-0 relative">
-                        <img
-                          src={getProductImage(prod)}
-                          alt={prod.name}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            e.target.src = 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=300&auto=format&fit=crop&q=80';
-                          }}
-                        />
-                        {!isActive && (
-                          <div className="absolute inset-0 bg-gray-900/40 flex items-center justify-center text-white text-[9px] font-bold">
-                            PAUSADO
+                  return (
+                    <tr
+                      key={prod.id}
+                      className={`hover:bg-[#F7FAF9] transition-colors group ${
+                        !isActive ? 'bg-slate-50/60 opacity-80' : ''
+                      }`}
+                    >
+                      <td className="py-3 pl-4 pr-2">
+                        <div className="flex items-center gap-2.5">
+                          <ProductThumbnail product={prod} size="sm" />
+                          <div className="min-w-0 max-w-[240px]">
+                            <p className="font-semibold text-[#111827] leading-snug truncate" title={prod.name}>
+                              {prod.name}
+                            </p>
+                            <p className="text-[10.5px] text-slate-400 truncate mt-0.5">
+                              <span className="font-mono-num font-semibold text-slate-500">
+                                {prod.code}
+                              </span>{' '}
+                              · {prod.category} · [{prod.unit}]
+                              {prod.provider_code && (
+                                <span className="ml-1 text-slate-500 font-semibold">
+                                  · Cat: {prod.provider_code}
+                                </span>
+                              )}
+                            </p>
                           </div>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between text-[10px] text-gray-400 font-mono">
-                          <span>{prod.code}</span>
-                          <span className="font-sans font-bold uppercase">{prod.category}</span>
                         </div>
-                        <h4 className="font-bold text-xs text-gray-900 line-clamp-2 mt-0.5 leading-snug" title={prod.name}>
-                          {prod.name}
-                        </h4>
+                      </td>
 
-                        <div className="mt-1 flex flex-wrap items-center gap-1">
-                          <span className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-bold ${
-                            prod.stock <= prod.min_stock
-                              ? 'bg-rose-50 text-rose-700 border border-rose-200'
-                              : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                          }`}>
-                            Stock: {prod.stock} {prod.unit}
-                          </span>
+                      <td className="py-3 px-2 text-center whitespace-nowrap">
+                        <button
+                          type="button"
+                          onClick={() => handleToggleActive(prod)}
+                          disabled={togglingId === prod.id}
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold transition-colors cursor-pointer ${
+                            isActive
+                              ? 'bg-[#E6F7F5] text-[#074E4A] hover:bg-emerald-100'
+                              : 'bg-amber-50 text-amber-700 hover:bg-amber-100'
+                          }`}
+                          title={isActive ? 'Clic para pausar (ocultar en POS)' : 'Clic para activar en POS'}
+                        >
+                          <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                          <span>{isActive ? 'Activo en POS' : 'Oculto POS'}</span>
+                        </button>
+                      </td>
 
-                          {/* Active / Inactive Badge */}
-                          {isActive ? (
-                            <span className="inline-block px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
-                              🟢 Activo en POS
-                            </span>
-                          ) : (
-                            <span className="inline-block px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-200/60">
-                              ⏸ Oculto en POS
-                            </span>
-                          )}
+                      <td className="py-3 px-2 text-center whitespace-nowrap">
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 rounded-lg font-mono-num text-[11px] font-semibold ${
+                            outOfStock
+                              ? 'bg-rose-50 text-rose-600'
+                              : isLowStock
+                                ? 'bg-amber-50 text-amber-700'
+                                : 'bg-[#F4F6F8] text-slate-600'
+                          }`}
+                        >
+                          {prod.stock} {prod.unit}
+                        </span>
+                      </td>
+
+                      <td className="py-3 px-2 text-right font-mono-num font-bold text-[#111827] whitespace-nowrap">
+                        ${priceUsd.toFixed(2)}
+                      </td>
+
+                      <td className="py-3 px-2 text-right font-mono-num font-semibold text-[#074E4A] whitespace-nowrap">
+                        Bs. {Number(displayPriceBs).toLocaleString('es-VE', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                      </td>
+
+                      <td className="py-3 px-2 text-right font-mono-num font-semibold text-indigo-700 whitespace-nowrap">
+                        ${displayPriceUsdBcv.toFixed(2)}
+                      </td>
+
+                      <td className="py-3 px-2 text-right font-mono-num font-semibold text-violet-700 whitespace-nowrap">
+                        ${casheaPrice.toFixed(2)}
+                      </td>
+
+                      <td className="py-3 pl-2 pr-4 text-center whitespace-nowrap">
+                        <div className="inline-flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleActive(prod)}
+                            disabled={togglingId === prod.id}
+                            className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors cursor-pointer ${
+                              isActive
+                                ? 'bg-[#F4F6F8] hover:bg-rose-50 text-slate-500 hover:text-rose-600'
+                                : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800'
+                            }`}
+                            title={isActive ? 'Pausar (ocultar en POS)' : 'Activar en POS'}
+                          >
+                            {isActive ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => onAdjustStock(prod)}
+                            className="px-2.5 h-8 rounded-xl bg-[#F4F6F8] hover:bg-slate-200 text-slate-700 text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                            title="Ajustar inventario / stock"
+                          >
+                            <Layers className="w-3 h-3 text-[#074E4A]" />
+                            <span>Stock</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => onEditProduct(prod)}
+                            className="px-3 h-8 rounded-xl bg-[#074E4A] hover:bg-[#053E3B] text-white text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                            title="Editar datos del producto"
+                          >
+                            <Pencil className="w-3 h-3" />
+                            <span>Editar</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setDeleteProductConfirm(prod)}
+                            className="w-8 h-8 rounded-xl bg-rose-50/70 hover:bg-rose-100 text-rose-500 flex items-center justify-center transition-colors cursor-pointer"
+                            title="Eliminar producto permanentemente"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         </div>
-                      </div>
-                    </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
+        /* ========================================================= */
+        /* VISTA EN CUADRÍCULA (GRID)                                */
+        /* ========================================================= */
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {filtered.map(prod => {
+            const isActive = prod.is_active !== 0;
+            const priceUsd = Number(prod.price_usd_tienda || 0);
+            const displayPriceBs = prod.price_bs || (priceUsd * tasaTienda);
+            const displayPriceUsdBcv = prod.price_usd_bcv ? Number(prod.price_usd_bcv) : (displayPriceBs / tasaBcvVal);
+            const casheaPrice = prod.price_cashea ? Number(prod.price_cashea) : (priceUsd * (1 + casheaPercent / 100));
 
-                    {/* Provider info if exists */}
-                    {(prod.provider_code || prod.provider_notes) && (
-                      <div className="mt-2 p-1.5 rounded-lg bg-gray-50 border border-gray-100 text-[10px] text-gray-600 flex items-center gap-1.5">
-                        <Building className="w-3 h-3 text-gray-400 shrink-0" />
-                        <span className="truncate">
-                          {prod.provider_code && <strong className="text-gray-800">Cat: {prod.provider_code} </strong>}
-                          {prod.provider_notes && <span>• {prod.provider_notes}</span>}
+            return (
+              <div
+                key={prod.id}
+                className={`card-surface card-surface-hover p-4 flex flex-col justify-between gap-3.5 ${
+                  !isActive ? 'opacity-80 bg-slate-50/60' : ''
+                }`}
+              >
+                <div>
+                  {/* Top Product Identity */}
+                  <div className="flex items-start gap-3">
+                    <ProductThumbnail product={prod} size="md" />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-1.5 text-[10px]">
+                        <span className="font-mono-num text-slate-400 font-semibold shrink-0">
+                          {prod.code}
+                        </span>
+                        <span className="uppercase tracking-wide text-slate-400 font-semibold truncate text-right">
+                          {prod.category}
                         </span>
                       </div>
-                    )}
+                      <h4 className="font-semibold text-[13.5px] text-[#111827] leading-snug mt-0.5 line-clamp-2" title={prod.name}>
+                        {prod.name}
+                      </h4>
 
-                    {/* Pricing info (Tienda USD, Bs., USD BCV y Cashea) */}
-                    <div className="p-2.5 rounded-xl bg-gray-50/70 border border-gray-100 mt-2.5 space-y-1.5 text-xs">
-                      <div className="flex justify-between items-baseline">
-                        <span className="text-[10px] text-gray-400 font-bold uppercase">Precio Tienda ($):</span>
-                        <span className="font-mono font-black text-gray-900 text-sm">
-                          ${Number(prod.price_usd_tienda).toFixed(2)}
+                      <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                        <span className={`px-2 py-0.5 rounded-md font-mono-num text-[11px] font-semibold ${
+                          prod.stock <= prod.min_stock
+                            ? 'bg-rose-50 text-rose-700'
+                            : 'bg-[#F2F7F6] text-[#074E4A]'
+                        }`}>
+                          Stock: {prod.stock} {prod.unit}
                         </span>
-                      </div>
-                      <div className="flex justify-between items-center text-[11px] font-mono pt-1 border-t border-gray-100">
-                        <span className="text-gray-600">Bs. Tienda:</span>
-                        <b className="text-emerald-700 font-bold">Bs. {Number(displayPriceBs).toLocaleString('es-VE')}</b>
-                      </div>
-                      <div className="flex justify-between items-center text-[11px] font-mono">
-                        <span className="text-indigo-600 font-medium">USD BCV ($):</span>
-                        <b className="text-indigo-700 font-bold">${displayPriceUsdBcv.toFixed(2)}</b>
-                      </div>
-                      <div className="flex justify-between items-center text-[10px] font-mono text-purple-700 pt-0.5 border-t border-gray-100">
-                        <span>Cashea:</span>
-                        <b>${Number(prod.price_cashea).toFixed(2)}</b>
+                        <span
+                          className={`px-2 py-0.5 rounded-md text-[11px] font-semibold ${
+                            isActive
+                              ? 'bg-[#E6F7F5] text-[#074E4A]'
+                              : 'bg-amber-50 text-amber-700'
+                          }`}
+                        >
+                          {isActive ? 'Activo en POS' : 'Oculto POS'}
+                        </span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Actions Bar */}
-                  <div className="pt-3 flex items-center gap-1.5">
-                    {/* Toggle Active Switch Button */}
-                    <button
-                      type="button"
-                      onClick={() => handleToggleActive(prod)}
-                      disabled={togglingId === prod.id}
-                      className={`p-1.5 rounded-xl border text-xs font-semibold flex items-center justify-center transition-all cursor-pointer ${
-                        isActive
-                          ? 'border-gray-200 bg-white hover:bg-rose-50 hover:text-rose-600 text-gray-600'
-                          : 'border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-800'
-                      }`}
-                      title={isActive ? 'Desactivar / Ocultar del Punto de Venta' : 'Activar para vender en Punto de Venta'}
-                    >
-                      {isActive ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5 text-emerald-700" />}
-                    </button>
+                  {/* Provider notes if exists */}
+                  {(prod.provider_code || prod.provider_notes) && (
+                    <div className="mt-2.5 p-2 rounded-xl bg-[#F6F8FA] text-[11px] text-slate-600 flex items-center gap-1.5">
+                      <Building className="w-3 h-3 text-slate-400 shrink-0" />
+                      <span className="truncate">
+                        {prod.provider_code && <strong className="text-slate-800">Cat: {prod.provider_code} </strong>}
+                        {prod.provider_notes && <span>• {prod.provider_notes}</span>}
+                      </span>
+                    </div>
+                  )}
 
-                    {/* Stock Adjustment */}
-                    <button
-                      type="button"
-                      onClick={() => onAdjustStock(prod)}
-                      className="py-1.5 px-2 rounded-xl border border-gray-200 text-gray-600 hover:bg-white text-xs font-medium flex items-center justify-center gap-1 transition-colors cursor-pointer"
-                      title="Ajustar cantidad de stock"
-                    >
-                      <Layers className="w-3.5 h-3.5" />
-                      <span>Stock</span>
-                    </button>
-
-                    {/* Edit Product Data */}
-                    <button
-                      type="button"
-                      onClick={() => onEditProduct(prod)}
-                      className="flex-1 py-1.5 px-2.5 rounded-xl bg-[#074E4A] hover:bg-[#053E3B] text-white text-xs font-semibold flex items-center justify-center gap-1 shadow-xs transition-colors cursor-pointer"
-                    >
-                      <Pencil className="w-3.5 h-3.5" />
-                      <span>Editar</span>
-                    </button>
-
-                    {/* Delete Product Button */}
-                    <button
-                      type="button"
-                      onClick={() => setDeleteProductConfirm(prod)}
-                      className="p-1.5 rounded-xl border border-rose-100 bg-white hover:bg-rose-50 text-rose-500 transition-colors cursor-pointer"
-                      title="Eliminar producto permanentemente"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                  {/* 4-Row Financial Breakdown */}
+                  <div className="bg-[#F6F8FA] rounded-xl p-3 flex flex-col gap-1.5 text-xs mt-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10.5px] font-semibold text-slate-400 uppercase">
+                        Precio Tienda ($)
+                      </span>
+                      <span className="font-mono-num font-bold text-[#111827] text-sm">
+                        ${priceUsd.toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-slate-500">Bs. Tienda:</span>
+                      <span className="font-mono-num font-semibold text-[#074E4A]">
+                        Bs. {Number(displayPriceBs).toLocaleString('es-VE', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-slate-500">USD BCV ($):</span>
+                      <span className="font-mono-num font-semibold text-indigo-600">
+                        ${displayPriceUsdBcv.toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-slate-500">Cashea:</span>
+                      <span className="font-mono-num font-semibold text-violet-600">
+                        ${casheaPrice.toFixed(2)}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
+
+                {/* Actions Bar */}
+                <div className="pt-2 flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => handleToggleActive(prod)}
+                    disabled={togglingId === prod.id}
+                    className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors cursor-pointer ${
+                      isActive
+                        ? 'bg-[#F4F6F8] hover:bg-rose-50 text-slate-500 hover:text-rose-600'
+                        : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800'
+                    }`}
+                    title={isActive ? 'Pausar (ocultar en POS)' : 'Activar en POS'}
+                  >
+                    {isActive ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => onAdjustStock(prod)}
+                    className="px-2.5 h-8 rounded-xl bg-[#F4F6F8] hover:bg-slate-200 text-slate-700 text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                    title="Ajustar stock"
+                  >
+                    <Layers className="w-3 h-3 text-[#074E4A]" />
+                    <span>Stock</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => onEditProduct(prod)}
+                    className="flex-1 h-8 rounded-xl bg-[#074E4A] hover:bg-[#053E3B] text-white text-xs font-semibold flex items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+                  >
+                    <Pencil className="w-3 h-3" />
+                    <span>Editar</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setDeleteProductConfirm(prod)}
+                    className="w-8 h-8 rounded-xl bg-rose-50/70 hover:bg-rose-100 text-rose-500 flex items-center justify-center transition-colors cursor-pointer"
+                    title="Eliminar producto"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Delete Confirmation Modal */}
       {deleteProductConfirm && (
         <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-gray-100 text-center space-y-3">
+          <div className="card-surface max-w-sm w-full p-5 shadow-2xl border border-slate-100 text-center space-y-3">
             <div className="w-12 h-12 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center mx-auto">
               <Trash2 className="w-6 h-6" />
             </div>
-            <h3 className="font-bold text-base text-gray-900">¿Eliminar Producto?</h3>
-            <p className="text-xs text-gray-500">
-              ¿Estás seguro de eliminar <strong className="text-gray-900">{deleteProductConfirm.name}</strong> ({deleteProductConfirm.code})? Esta acción no se puede deshacer.
+            <h3 className="font-display font-bold text-base text-[#111827]">¿Eliminar Producto?</h3>
+            <p className="text-xs text-slate-500">
+              ¿Estás seguro de eliminar <strong className="text-[#111827]">{deleteProductConfirm.name}</strong> ({deleteProductConfirm.code})? Esta acción no se puede deshacer.
             </p>
             <div className="flex gap-2 pt-2">
               <button
                 type="button"
                 onClick={() => setDeleteProductConfirm(null)}
-                className="flex-1 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-xs rounded-xl cursor-pointer"
+                className="flex-1 py-2.5 bg-[#F4F6F8] hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl cursor-pointer transition-colors"
               >
                 Cancelar
               </button>
               <button
                 type="button"
                 onClick={() => handleDeleteProduct(deleteProductConfirm)}
-                className="flex-1 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer"
+                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer transition-colors"
               >
                 Eliminar
               </button>
