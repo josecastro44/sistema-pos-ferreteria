@@ -42,6 +42,7 @@ export default function PosView({
   selectedCustomerId = null,
   setSelectedCustomerId = () => {},
   customers = [],
+  setCustomers = () => {},
   cartTotals,
   onProductClick,
   updateCartQuantity,
@@ -72,7 +73,7 @@ export default function PosView({
       if (found) return found;
     }
     return {
-      id: 1,
+      id: selectedCustomerId || 1,
       name: customerName || 'Cliente Mostrador',
       id_card: customerCi || 'V-00000000',
       phone: customerPhone || '0414-0000000'
@@ -101,7 +102,26 @@ export default function PosView({
   };
 
   const handleClientCreated = (newClient) => {
+    if (!newClient) return;
+
+    // 1. Optimistically append new client so dropdown and search have it immediately without reload
+    if (typeof setCustomers === 'function') {
+      setCustomers((prev) => {
+        const list = Array.isArray(prev) ? prev : [];
+        if (list.some((c) => c.id === newClient.id)) {
+          return list.map((c) => (c.id === newClient.id ? { ...c, ...newClient } : c));
+        }
+        return [newClient, ...list];
+      });
+    }
+
+    // 2. Select this client immediately for current cart
     handleSelectClient(newClient);
+
+    // 3. Trigger background fetch from server
+    if (typeof fetchCustomers === 'function') {
+      fetchCustomers();
+    }
   };
 
   // Close dropdown on click outside

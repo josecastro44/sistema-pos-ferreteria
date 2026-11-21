@@ -17,6 +17,7 @@ import {
 
 export default function CustomersView({
   customers = [],
+  setCustomers = () => {},
   fetchCustomers,
   onSelectCustomerForSale,
   showToast
@@ -81,9 +82,20 @@ export default function CustomersView({
         throw new Error(errData.error || 'Error al guardar cliente');
       }
 
+      const savedCust = await res.json();
+      if (typeof setCustomers === 'function' && savedCust) {
+        setCustomers((prev) => {
+          const list = Array.isArray(prev) ? prev : [];
+          if (editingCustomer) {
+            return list.map((c) => (c.id === savedCust.id ? { ...c, ...savedCust } : c));
+          }
+          return [savedCust, ...list];
+        });
+      }
+
       showToast(editingCustomer ? 'Cliente actualizado' : 'Cliente registrado con éxito');
       setIsModalOpen(false);
-      fetchCustomers();
+      if (fetchCustomers) fetchCustomers();
     } catch (err) {
       showToast(err.message, 'error');
     }
@@ -93,9 +105,12 @@ export default function CustomersView({
     try {
       const res = await fetch(`/api/customers/${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Error al eliminar cliente');
+      if (typeof setCustomers === 'function') {
+        setCustomers((prev) => (Array.isArray(prev) ? prev.filter((c) => c.id !== id) : []));
+      }
       showToast('Cliente eliminado');
       setDeleteConfirm(null);
-      fetchCustomers();
+      if (fetchCustomers) fetchCustomers();
     } catch (err) {
       showToast(err.message, 'error');
     }

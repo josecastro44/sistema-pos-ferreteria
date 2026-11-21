@@ -136,9 +136,16 @@ export default function QuickClientModal({
       }
 
       const created = await res.json();
-      if (fetchCustomers) await fetchCustomers();
-      if (onClientCreated) onClientCreated(created);
-      if (showToast) showToast(`¡Cliente ${created.name} registrado y seleccionado con éxito!`);
+      const clientObj = (created && created.id) ? created : { ...payload, id: Date.now() };
+
+      // 1. Immediately notify parent to select and optimistically append to client list (0ms lag)
+      if (onClientCreated) onClientCreated(clientObj);
+
+      // 2. Background sync
+      if (fetchCustomers) fetchCustomers();
+
+      // 3. Feedback toast and close
+      if (showToast) showToast(`¡Cliente ${clientObj.name} registrado y seleccionado con éxito!`);
       onClose();
     } catch (err) {
       if (showToast) showToast(err.message, 'error');

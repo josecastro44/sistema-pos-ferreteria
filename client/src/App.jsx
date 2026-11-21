@@ -544,12 +544,17 @@ export default function App() {
       const result = await res.json();
       setIsCheckoutOpen(false);
       setCart([]);
+      setCustomerName('Cliente Mostrador');
+      setCustomerCi('');
+      setCustomerPhone('');
+      setSelectedCustomerId(null);
       setPrintedSale(result);
       showToast(isCreditSale ? '¡Venta a Crédito registrada con éxito!' : '¡Venta completada con éxito!');
       fetchProducts(searchQuery);
       fetchDailyReport();
       fetchSales();
       fetchCreditsSummary();
+      fetchCustomers();
     } catch (err) {
       showToast(err.message, 'error');
     }
@@ -721,6 +726,7 @@ export default function App() {
           selectedCustomerId={selectedCustomerId}
           setSelectedCustomerId={setSelectedCustomerId}
           customers={customers}
+          setCustomers={setCustomers}
           cartTotals={cartTotals}
           onProductClick={handleProductClick}
           updateCartQuantity={updateCartQuantity}
@@ -767,6 +773,7 @@ export default function App() {
       {activeTab === 'customers' && (
         <CustomersView
           customers={customers}
+          setCustomers={setCustomers}
           fetchCustomers={fetchCustomers}
           onSelectCustomerForSale={(cust) => {
             setCustomerName(`${cust.name} (${cust.id_card})`);
